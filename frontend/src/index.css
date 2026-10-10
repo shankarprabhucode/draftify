@@ -5,5 +5,61 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
+
+/* ---------- Rich text: shared by the editor and card previews ---------- */
+
+.rich-text {
+  @apply text-[15px] leading-relaxed text-slate-800 dark:text-slate-200;
+}
+.rich-text > * + * { @apply mt-2; }
+.rich-text h1 { @apply mt-4 text-2xl font-bold leading-tight; }
+.rich-text h2 { @apply mt-3 text-xl font-semibold leading-tight; }
+.rich-text h3 { @apply mt-3 text-lg font-semibold leading-tight; }
+.rich-text h1:first-child, .rich-text h2:first-child, .rich-text h3:first-child { @apply mt-0; }
+.rich-text ul { @apply list-disc pl-6; }
+.rich-text ol { @apply list-decimal pl-6; }
+.rich-text li > p { @apply my-0; }
+.rich-text li + li { @apply mt-1; }
+.rich-text blockquote { @apply border-l-4 border-slate-300 pl-4 italic text-slate-600 dark:border-slate-600 dark:text-slate-400; }
+.rich-text pre { @apply overflow-x-auto rounded-lg bg-slate-900 p-3 font-mono text-[13px] text-slate-100 dark:bg-black; }
+.rich-text pre code { @apply bg-transparent p-0 text-inherit; }
+.rich-text code { @apply rounded bg-slate-200/70 px-1.5 py-0.5 font-mono text-[13px] text-pink-700 dark:bg-slate-700 dark:text-pink-300; }
+.rich-text hr { @apply my-4 border-slate-300 dark:border-slate-600; }
+.rich-text a { @apply text-indigo-600 underline underline-offset-2 dark:text-indigo-400; }
+.rich-text mark { @apply rounded bg-amber-200 px-0.5 text-slate-900; }
+.rich-text s { @apply text-slate-500; }
+
+/* Task lists */
+.rich-text ul[data-type="taskList"] { @apply list-none pl-0; }
+.rich-text ul[data-type="taskList"] li { @apply flex items-start gap-2; }
+.rich-text ul[data-type="taskList"] li > label { @apply mt-1 flex shrink-0 select-none; }
+.rich-text ul[data-type="taskList"] li > label input { @apply h-4 w-4 cursor-pointer accent-indigo-600; }
+.rich-text ul[data-type="taskList"] li > div { @apply flex-1; }
+.rich-text ul[data-type="taskList"] li[data-checked="true"] > div { @apply text-slate-400 line-through; }
+
+/* Placeholder */
+.rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-slate-400;
+}
+
+/* Card previews: slightly smaller and clamped */
+.note-preview { @apply text-sm; }
+.note-preview h1 { @apply text-lg; }
+.note-preview h2 { @apply text-base; }
+.note-preview h3 { @apply text-[15px]; }
+.note-preview pre { @apply p-2 text-xs; }
+
+/* Slash menu popup */
+.slash-menu {
+  @apply w-72 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-slate-600 dark:bg-slate-800;
+}
+
+/* Masonry grid */
+.masonry { @apply columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4; }
+.masonry > * { @apply mb-4 break-inside-avoid; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.animate-rise { animation: rise 160ms ease-out; }

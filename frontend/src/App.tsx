@@ -1,10 +1,13 @@
 import { NotesUIProvider } from './context/NotesUIProvider'
+import { ToastProvider } from './context/ToastProvider'
 import { NotesDashboard } from './components/NotesDashboard'
 
 export default function App() {
   return (
-    <NotesUIProvider>
-      <NotesDashboard />
-    </NotesUIProvider>
+    <ToastProvider>
+      <NotesUIProvider>
+        <NotesDashboard />
+      </NotesUIProvider>
+    </ToastProvider>
   )
 }

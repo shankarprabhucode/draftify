@@ -24,21 +24,36 @@ def client(request):
 def test_crud_round_trip(client):
     assert client.get("/notes").json() == []
 
-    created = client.post("/notes", json={"title": "First", "content": "hello"})
+    created = client.post("/notes", json={"title": "First", "content": "<p>hello</p>"})
     assert created.status_code == 201
     note = created.json()
-    assert note == {"id": 1, "title": "First", "content": "hello"}
+    assert note["id"] == 1
+    assert note["title"] == "First"
+    assert note["content"] == "<p>hello</p>"
+    assert note["color"] == "default"
+    assert note["pinned"] is False
+    assert note["updated_at"].endswith("Z") or "+00:00" in note["updated_at"]
 
-    updated = client.put(f"/notes/{note['id']}", json={"title": "Edited", "content": ""})
+    updated = client.put(
+        f"/notes/{note['id']}",
+        json={"title": "Edited", "content": "", "color": "teal", "pinned": True},
+    )
     assert updated.status_code == 200
-    assert updated.json() == {"id": 1, "title": "Edited", "content": ""}
+    body = updated.json()
+    assert (body["title"], body["color"], body["pinned"]) == ("Edited", "teal", True)
+    assert body["updated_at"] >= note["updated_at"]
 
-    assert client.get("/notes").json() == [updated.json()]
-    assert client.get(f"/notes/{note['id']}").json() == updated.json()
+    assert client.get("/notes").json() == [body]
+    assert client.get(f"/notes/{note['id']}").json() == body
 
-    deleted = client.delete(f"/notes/{note['id']}")
-    assert deleted.status_code == 204
+    assert client.delete(f"/notes/{note['id']}").status_code == 204
     assert client.get("/notes").json() == []
+
+
+def test_defaults_allow_untitled_notes(client):
+    created = client.post("/notes", json={"content": "<p>just text</p>"})
+    assert created.status_code == 201
+    assert created.json()["title"] == ""
 
 
 def test_list_preserves_creation_order(client):
@@ -49,9 +64,30 @@ def test_list_preserves_creation_order(client):
 
 def test_missing_note_returns_404(client):
     assert client.get("/notes/99").status_code == 404
-    assert client.put("/notes/99", json={"title": "x", "content": ""}).status_code == 404
+    assert client.put("/notes/99", json={"title": "x"}).status_code == 404
     assert client.delete("/notes/99").status_code == 404
 
 
-def test_title_is_required(client):
-    assert client.post("/notes", json={"title": "", "content": "x"}).status_code == 422
+def test_validation(client):
+    assert client.post("/notes", json={"title": "x" * 201}).status_code == 422
+    assert client.post("/notes", json={"title": "x", "color": "neon"}).status_code == 422
+
+
+def test_migration_adds_columns_to_old_table():
+    """A table from the first release (id/title/content only) gains the new columns."""
+    from sqlalchemy import text
+
+    from store import migrate
+
+    engine = make_engine("sqlite://")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE notes (id INTEGER PRIMARY KEY, title VARCHAR, content VARCHAR)"))
+        conn.execute(text("INSERT INTO notes (title, content) VALUES ('old', 'row')"))
+
+    assert migrate(engine) == ["color", "pinned", "updated_at"]
+    assert migrate(engine) == []  # idempotent
+
+    store = SqlNoteStore(engine)
+    [note] = store.list()
+    assert (note.title, note.color, note.pinned) == ("old", "default", False)
+    assert note.updated_at is not None

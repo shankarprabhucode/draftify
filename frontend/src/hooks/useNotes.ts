@@ -33,7 +33,10 @@ export function useCreateNote() {
     onMutate: async (input: NoteInput) => {
       const previous = await snapshot()
       // Negative temporary id so it can't collide with server ids.
-      patch((notes) => [...notes, { id: -Date.now(), ...input }])
+      patch((notes) => [
+        ...notes,
+        { id: -Date.now(), updated_at: new Date().toISOString(), ...input },
+      ])
       return { previous }
     },
     onError: (_err, _input, ctx) => ctx && rollback(ctx.previous),
@@ -47,7 +50,11 @@ export function useUpdateNote() {
     mutationFn: ({ id, input }: { id: number; input: NoteInput }) => notesApi.update(id, input),
     onMutate: async ({ id, input }) => {
       const previous = await snapshot()
-      patch((notes) => notes.map((n) => (n.id === id ? { ...n, ...input } : n)))
+      patch((notes) =>
+        notes.map((n) =>
+          n.id === id ? { ...n, ...input, updated_at: new Date().toISOString() } : n,
+        ),
+      )
       return { previous }
     },
     onError: (_err, _vars, ctx) => ctx && rollback(ctx.previous),

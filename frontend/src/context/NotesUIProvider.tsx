@@ -1,24 +1,23 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { NotesUIContext, type EditorState, type NotesUIContextValue } from './notesUIContext'
+import { NotesUIContext, type NotesUIContextValue } from './notesUIContext'
 
 /**
- * Client-only UI state (search text, open editor) lives in Context.
+ * Client-only UI state (search text, which note is open) lives in Context.
  * Server state (the notes themselves) lives in TanStack Query.
  */
 export function NotesUIProvider({ children }: { children: ReactNode }) {
   const [search, setSearch] = useState('')
-  const [editor, setEditor] = useState<EditorState>({ mode: 'closed' })
+  const [openNoteId, setOpenNoteId] = useState<number | null>(null)
 
   const value = useMemo<NotesUIContextValue>(
     () => ({
       search,
       setSearch,
-      editor,
-      openCreate: () => setEditor({ mode: 'create' }),
-      openEdit: (note) => setEditor({ mode: 'edit', note }),
-      closeEditor: () => setEditor({ mode: 'closed' }),
+      openNoteId,
+      openNote: (id) => setOpenNoteId(id),
+      closeNote: () => setOpenNoteId(null),
     }),
-    [search, editor],
+    [search, openNoteId],
   )
 
   return <NotesUIContext.Provider value={value}>{children}</NotesUIContext.Provider>

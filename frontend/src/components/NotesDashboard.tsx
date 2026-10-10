@@ -1,57 +1,74 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { Note } from '../api/notes'
+import { toInput } from '../api/notes'
+import { useDeleteWithUndo } from '../hooks/useDeleteWithUndo'
+import { useNotes, useUpdateNote } from '../hooks/useNotes'
 import { useNotesUI } from '../hooks/useNotesUI'
-import { useCreateNote, useDeleteNote, useNotes, useUpdateNote } from '../hooks/useNotes'
-import { NoteCard } from './NoteCard'
-import { NoteEditorModal } from './NoteEditorModal'
+import { toPlainText } from '../lib/html'
+import { NoteDialog } from './NoteDialog'
+import { NotesGrid } from './NotesGrid'
+import { QuickCapture } from './QuickCapture'
 import { SearchBar } from './SearchBar'
 import { EmptyState, ErrorBanner, LoadingGrid } from './StatusViews'
+import { Toasts } from './Toasts'
 
 const NO_NOTES: Note[] = []
 
 export function NotesDashboard() {
-  const { search, openCreate, openEdit } = useNotesUI()
+  const { search, openNoteId, openNote, closeNote } = useNotesUI()
   const notesQuery = useNotes()
-  const create = useCreateNote()
   const update = useUpdateNote()
-  const remove = useDeleteNote()
+  const { deleteNote, pendingIds, error: deleteError, reset: resetDelete } = useDeleteWithUndo()
 
   const notes = notesQuery.data ?? NO_NOTES
-  const filtered = useMemo(() => {
+
+  // Search over title and the plain text of the HTML content.
+  const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return notes
-    return notes.filter(
-      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q),
+    const alive = notes.filter((n) => !pendingIds.has(n.id))
+    if (!q) return alive
+    return alive.filter(
+      (n) => n.title.toLowerCase().includes(q) || toPlainText(n.content).toLowerCase().includes(q),
     )
-  }, [notes, search])
+  }, [notes, search, pendingIds])
 
-  const handleDelete = (note: Note) => {
-    if (window.confirm(`Delete "${note.title}"?`)) remove.mutate(note.id)
-  }
+  const { pinned, others } = useMemo(() => {
+    const byRecent = (a: Note, b: Note) => b.updated_at.localeCompare(a.updated_at)
+    return {
+      pinned: visible.filter((n) => n.pinned).sort(byRecent),
+      others: visible.filter((n) => !n.pinned).sort(byRecent),
+    }
+  }, [visible])
 
-  // Surface the most recent failed mutation (the optimistic update has already rolled back).
-  const mutationError = [create, update, remove].find((m) => m.isError)
+  const openedNote = openNoteId === null ? null : (notes.find((n) => n.id === openNoteId) ?? null)
+
+  const handleOpen = useCallback((note: Note) => openNote(note.id), [openNote])
+  const handleTogglePin = useCallback(
+    (note: Note) => update.mutate({ id: note.id, input: { ...toInput(note), pinned: !note.pinned } }),
+    [update],
+  )
+  const handleDelete = useCallback((note: Note) => deleteNote(note), [deleteNote])
+
+  const mutationError = update.isError ? update : deleteError ? { error: deleteError, reset: resetDelete } : null
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Notes</h1>
-          <p className="text-sm text-slate-500">
-            {notesQuery.isSuccess && `${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <SearchBar />
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            + New note
-          </button>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Notes
+          {notesQuery.isSuccess && (
+            <span className="ml-2 text-sm font-normal text-slate-500">
+              {visible.length}
+              {search && ` of ${notes.length}`}
+            </span>
+          )}
+        </h1>
+        <SearchBar />
       </header>
+
+      <div className="mb-8">
+        <QuickCapture />
+      </div>
 
       {mutationError && (
         <div className="mb-4">
@@ -67,35 +84,21 @@ export function NotesDashboard() {
       ) : notesQuery.isError ? (
         <ErrorBanner message={notesQuery.error.message} onRetry={() => notesQuery.refetch()} />
       ) : notes.length === 0 ? (
-        <EmptyState
-          message="You don't have any notes yet."
-          action={
-            <button
-              type="button"
-              onClick={openCreate}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Create your first note
-            </button>
-          }
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyState message={`No notes match "${search}".`} />
+        <EmptyState title="No notes yet" hint="Your notes will appear here. Try typing '/' in the editor for headings, lists and more." />
+      ) : visible.length === 0 ? (
+        <EmptyState title={`No notes match "${search}"`} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              onEdit={openEdit}
-              onDelete={handleDelete}
-              deleting={remove.isPending && remove.variables === note.id}
-            />
-          ))}
-        </div>
+        <NotesGrid
+          pinned={pinned}
+          others={others}
+          onOpen={handleOpen}
+          onTogglePin={handleTogglePin}
+          onDelete={handleDelete}
+        />
       )}
 
-      <NoteEditorModal />
+      {openedNote && <NoteDialog key={openedNote.id} note={openedNote} onClose={closeNote} onDelete={handleDelete} />}
+      <Toasts />
     </div>
   )
 }

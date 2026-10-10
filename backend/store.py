@@ -12,11 +12,11 @@ from itertools import count
 from threading import Lock
 from typing import Protocol
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from models import Note, NoteIn, NoteRow
+from models import Note, NoteIn, NoteRow, utcnow
 
 
 class NoteStore(Protocol):
@@ -46,7 +46,7 @@ class InMemoryNoteStore:
 
     def create(self, data: NoteIn) -> Note:
         with self._lock:
-            note = Note(id=next(self._ids), **data.model_dump())
+            note = Note(id=next(self._ids), updated_at=utcnow(), **data.model_dump())
             self._notes[note.id] = note
             return note
 
@@ -54,7 +54,7 @@ class InMemoryNoteStore:
         with self._lock:
             if note_id not in self._notes:
                 return None
-            note = Note(id=note_id, **data.model_dump())
+            note = Note(id=note_id, updated_at=utcnow(), **data.model_dump())
             self._notes[note_id] = note
             return note
 
@@ -68,12 +68,38 @@ class InMemoryNoteStore:
             self._ids = count(1)
 
 
+# Columns added after the first release, with the SQL default for existing rows.
+# ``create_all`` only creates missing tables, so missing columns are added here.
+# SQLite cannot add a column whose default is an expression, so timestamps are
+# added nullable and backfilled instead.
+_ADDED_COLUMNS: dict[str, tuple[str, str | None]] = {
+    "color": ("VARCHAR(16) NOT NULL DEFAULT 'default'", None),
+    "pinned": ("BOOLEAN NOT NULL DEFAULT FALSE", None),
+    "updated_at": ("TIMESTAMP", "UPDATE notes SET updated_at = CURRENT_TIMESTAMP"),
+}
+
+
+def migrate(engine: Engine) -> list[str]:
+    """Create the table and add any columns introduced since. Returns what was added."""
+    SQLModel.metadata.create_all(engine)
+    existing = {c["name"] for c in inspect(engine).get_columns("notes")}
+    added = []
+    with engine.begin() as conn:
+        for name, (ddl, backfill) in _ADDED_COLUMNS.items():
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE notes ADD COLUMN {name} {ddl}"))
+                if backfill:
+                    conn.execute(text(backfill))
+                added.append(name)
+    return added
+
+
 class SqlNoteStore:
-    """SQLModel-backed store. Creates the ``notes`` table if it does not exist."""
+    """SQLModel-backed store. Creates or migrates the ``notes`` table on start."""
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        SQLModel.metadata.create_all(engine)
+        migrate(engine)
 
     def list(self) -> list[Note]:
         with Session(self._engine) as session:
@@ -100,6 +126,9 @@ class SqlNoteStore:
                 return None
             row.title = data.title
             row.content = data.content
+            row.color = data.color
+            row.pinned = data.pinned
+            row.updated_at = utcnow()
             session.add(row)
             session.commit()
             session.refresh(row)

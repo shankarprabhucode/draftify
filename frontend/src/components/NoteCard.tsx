@@ -1,44 +1,79 @@
+import { memo, useMemo } from 'react'
 import type { Note } from '../api/notes'
+import { colorStyles } from '../lib/colors'
+import { sanitize } from '../lib/html'
+import { formatRelative } from '../lib/time'
+import { IconButton, PinIcon, TrashIcon } from './IconButton'
+import { Spinner } from './SaveButton'
 
 interface NoteCardProps {
   note: Note
-  onEdit: (note: Note) => void
+  onOpen: (note: Note) => void
+  onTogglePin: (note: Note) => void
   onDelete: (note: Note) => void
-  deleting?: boolean
 }
 
-export function NoteCard({ note, onEdit, onDelete, deleting = false }: NoteCardProps) {
+export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDelete }: NoteCardProps) {
   const pendingCreate = note.id < 0
+  const html = useMemo(() => sanitize(note.content), [note.content])
+  const untitled = !note.title.trim()
 
   return (
     <article
-      aria-busy={pendingCreate || deleting}
-      className={`flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition ${
-        pendingCreate || deleting ? 'opacity-60' : 'hover:shadow-md'
+      aria-busy={pendingCreate}
+      className={`group relative animate-rise rounded-xl border p-4 shadow-sm transition hover:shadow-md ${colorStyles[note.color].surface} ${
+        pendingCreate ? 'opacity-60' : ''
       }`}
     >
-      <h3 className="mb-2 line-clamp-2 text-base font-semibold text-slate-900">{note.title}</h3>
-      <p className="mb-4 line-clamp-5 flex-1 whitespace-pre-wrap text-sm text-slate-600">
-        {note.content || <span className="italic text-slate-400">No content</span>}
-      </p>
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => onEdit(note)}
-          disabled={pendingCreate || deleting}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+      <button
+        type="button"
+        onClick={() => onOpen(note)}
+        disabled={pendingCreate}
+        aria-label={`Open note ${untitled ? 'untitled' : note.title}`}
+        className="block w-full cursor-pointer text-left"
+      >
+        {!untitled && <h3 className="mb-1.5 pr-8 text-base font-semibold leading-snug">{note.title}</h3>}
+        {html ? (
+          <div
+            className="rich-text note-preview max-h-72 overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent)]"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : untitled ? (
+          <p className="text-sm italic text-slate-400">Empty note</p>
+        ) : null}
+      </button>
+
+      <div className="absolute top-2 right-2">
+        <IconButton
+          label={note.pinned ? 'Unpin note' : 'Pin note'}
+          active={note.pinned}
+          onClick={() => onTogglePin(note)}
+          disabled={pendingCreate}
+          className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}
         >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(note)}
-          disabled={pendingCreate || deleting}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-        >
-          {deleting ? 'Deleting…' : 'Delete'}
-        </button>
+          <PinIcon filled={note.pinned} />
+        </IconButton>
       </div>
+
+      <footer className="mt-3 flex items-center justify-between">
+        {pendingCreate ? (
+          <span className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400" aria-live="polite">
+            <Spinner /> Saving…
+          </span>
+        ) : (
+          <time dateTime={note.updated_at} className="text-xs text-slate-500">
+            {formatRelative(note.updated_at)}
+          </time>
+        )}
+        <IconButton
+          label="Delete note"
+          onClick={() => onDelete(note)}
+          disabled={pendingCreate}
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          <TrashIcon />
+        </IconButton>
+      </footer>
     </article>
   )
-}
+})

@@ -1,38 +1,54 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import type { Note } from '../api/notes'
 import { NoteCard } from './NoteCard'
 
-const note = { id: 1, title: 'Grocery list', content: 'Eggs, milk' }
+const note: Note = {
+  id: 1,
+  title: 'Grocery list',
+  content: '<p>Eggs, <strong>milk</strong></p>',
+  color: 'yellow',
+  pinned: false,
+  updated_at: new Date().toISOString(),
+}
+
+const handlers = () => ({ onOpen: vi.fn(), onTogglePin: vi.fn(), onDelete: vi.fn() })
 
 describe('NoteCard', () => {
-  it('renders the title and content', () => {
-    render(<NoteCard note={note} onEdit={vi.fn()} onDelete={vi.fn()} />)
+  it('renders the title and rich content', () => {
+    render(<NoteCard note={note} {...handlers()} />)
     expect(screen.getByRole('heading', { name: 'Grocery list' })).toBeInTheDocument()
-    expect(screen.getByText('Eggs, milk')).toBeInTheDocument()
+    expect(screen.getByText('milk').tagName).toBe('STRONG')
+    expect(screen.getByText('just now')).toBeInTheDocument()
   })
 
-  it('calls onEdit and onDelete with the note', async () => {
+  it('sanitises content from the server', () => {
+    const hostile = { ...note, content: '<p>safe</p><img src=x onerror="alert(1)"><script>alert(1)</script>' }
+    const { container } = render(<NoteCard note={hostile} {...handlers()} />)
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.querySelector('img')?.getAttribute('onerror')).toBeNull()
+    expect(screen.getByText('safe')).toBeInTheDocument()
+  })
+
+  it('opens, pins and deletes through its callbacks', async () => {
     const user = userEvent.setup()
-    const onEdit = vi.fn()
-    const onDelete = vi.fn()
-    render(<NoteCard note={note} onEdit={onEdit} onDelete={onDelete} />)
+    const h = handlers()
+    render(<NoteCard note={note} {...h} />)
 
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(onEdit).toHaveBeenCalledWith(note)
+    await user.click(screen.getByRole('button', { name: /open note/i }))
+    expect(h.onOpen).toHaveBeenCalledWith(note)
 
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
-    expect(onDelete).toHaveBeenCalledWith(note)
+    await user.click(screen.getByRole('button', { name: 'Pin note' }))
+    expect(h.onTogglePin).toHaveBeenCalledWith(note)
+
+    await user.click(screen.getByRole('button', { name: 'Delete note' }))
+    expect(h.onDelete).toHaveBeenCalledWith(note)
   })
 
-  it('disables actions while a delete is in flight', () => {
-    render(<NoteCard note={note} onEdit={vi.fn()} onDelete={vi.fn()} deleting />)
-    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled()
-  })
-
-  it('shows a placeholder for empty content', () => {
-    render(<NoteCard note={{ ...note, content: '' }} onEdit={vi.fn()} onDelete={vi.fn()} />)
-    expect(screen.getByText('No content')).toBeInTheDocument()
+  it('shows a placeholder for an empty untitled note and disables actions while creating', () => {
+    render(<NoteCard note={{ ...note, id: -1, title: '', content: '' }} {...handlers()} />)
+    expect(screen.getByText('Empty note')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete note' })).toBeDisabled()
   })
 })
