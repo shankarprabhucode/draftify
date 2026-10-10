@@ -5,7 +5,7 @@ import { colorStyles } from '../lib/colors'
 import { isBlank } from '../lib/html'
 import { RichTextEditor } from '../editor/RichTextEditor'
 import { ColorPicker } from './ColorPicker'
-import { IconButton, PaletteIcon, PinIcon } from './IconButton'
+import { IconButton, PaletteIcon, PencilIcon, PinIcon } from './IconButton'
 import { SaveButton, Spinner } from './SaveButton'
 
 /**
@@ -51,9 +51,12 @@ export function QuickCapture() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mx-auto flex w-full max-w-2xl items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-slate-500 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+        className="mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-slate-500 shadow-card transition hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900"
       >
-        <span>Take a note…</span>
+        <span className="flex items-center gap-3">
+          <PencilIcon />
+          Take a note…
+        </span>
         {create.isPending && (
           <span className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400" aria-live="polite">
             <Spinner /> Saving…
@@ -66,7 +69,7 @@ export function QuickCapture() {
   return (
     <div
       ref={box}
-      className={`mx-auto w-full max-w-2xl animate-rise rounded-xl border p-4 shadow-lg ${colorStyles[draft.color].surface}`}
+      className={`mx-auto w-full max-w-xl animate-rise rounded-2xl border p-4 shadow-card-hover ${colorStyles[draft.color].surface}`}
       onKeyDown={(e) => e.key === 'Escape' && close()}
     >
       <input

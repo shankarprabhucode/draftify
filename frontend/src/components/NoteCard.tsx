@@ -21,7 +21,7 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDe
   return (
     <article
       aria-busy={pendingCreate}
-      className={`group relative animate-rise rounded-xl border p-4 shadow-sm transition hover:shadow-md ${colorStyles[note.color].surface} ${
+      className={`group relative animate-rise rounded-2xl border shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${colorStyles[note.color].surface} ${
         pendingCreate ? 'opacity-60' : ''
       }`}
     >
@@ -30,16 +30,18 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDe
         onClick={() => onOpen(note)}
         disabled={pendingCreate}
         aria-label={`Open note ${untitled ? 'untitled' : note.title}`}
-        className="block w-full cursor-pointer text-left"
+        className="block w-full cursor-pointer rounded-2xl px-4 pt-4 pb-2 text-left"
       >
-        {!untitled && <h3 className="mb-1.5 pr-8 text-base font-semibold leading-snug">{note.title}</h3>}
+        {!untitled && (
+          <h3 className="mb-1 pr-7 text-[15px] leading-snug font-semibold tracking-tight">{note.title}</h3>
+        )}
         {html ? (
           <div
-            className="rich-text note-preview max-h-72 overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent)]"
+            className="rich-text note-preview max-h-64 overflow-hidden [mask-image:linear-gradient(to_bottom,black_80%,transparent)]"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : untitled ? (
-          <p className="text-sm italic text-slate-400">Empty note</p>
+          <p className="text-sm text-slate-400 italic">Empty note</p>
         ) : null}
       </button>
 
@@ -49,19 +51,19 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDe
           active={note.pinned}
           onClick={() => onTogglePin(note)}
           disabled={pendingCreate}
-          className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}
+          className={`h-7 w-7 ${note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}`}
         >
           <PinIcon filled={note.pinned} />
         </IconButton>
       </div>
 
-      <footer className="mt-3 flex items-center justify-between">
+      <footer className="flex h-9 items-center justify-between px-4 pb-1">
         {pendingCreate ? (
-          <span className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400" aria-live="polite">
-            <Spinner /> Saving…
+          <span className="flex items-center gap-1.5 text-[11px] text-indigo-600 dark:text-indigo-400" aria-live="polite">
+            <Spinner className="h-3 w-3" /> Saving…
           </span>
         ) : (
-          <time dateTime={note.updated_at} className="text-xs text-slate-500">
+          <time dateTime={note.updated_at} className="text-[11px] text-slate-400 transition group-hover:text-slate-500">
             {formatRelative(note.updated_at)}
           </time>
         )}
@@ -69,7 +71,7 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDe
           label="Delete note"
           onClick={() => onDelete(note)}
           disabled={pendingCreate}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
         >
           <TrashIcon />
         </IconButton>

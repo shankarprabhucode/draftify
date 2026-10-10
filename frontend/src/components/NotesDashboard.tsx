@@ -32,13 +32,14 @@ export function NotesDashboard() {
     )
   }, [notes, search, pendingIds])
 
-  const { pinned, others } = useMemo(() => {
-    const byRecent = (a: Note, b: Note) => b.updated_at.localeCompare(a.updated_at)
-    return {
-      pinned: visible.filter((n) => n.pinned).sort(byRecent),
-      others: visible.filter((n) => !n.pinned).sort(byRecent),
-    }
-  }, [visible])
+  // Pinned first, then most recently edited.
+  const sorted = useMemo(
+    () =>
+      [...visible].sort(
+        (a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at.localeCompare(a.updated_at),
+      ),
+    [visible],
+  )
 
   const openedNote = openNoteId === null ? null : (notes.find((n) => n.id === openNoteId) ?? null)
 
@@ -52,21 +53,28 @@ export function NotesDashboard() {
   const mutationError = update.isError ? update : deleteError ? { error: deleteError, reset: resetDelete } : null
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-base text-white">D</span>
-          Draftify
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
+          <h1 className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight">
+            <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-sm text-white shadow-sm">
+              D
+            </span>
+            Draftify
+          </h1>
+          <div className="flex flex-1 justify-center">
+            <SearchBar />
+          </div>
           {notesQuery.isSuccess && (
-            <span className="ml-2 text-sm font-normal text-slate-500">
+            <span className="hidden shrink-0 text-xs text-slate-400 sm:block" aria-live="polite">
               {visible.length}
-              {search && ` of ${notes.length}`}
+              {search ? ` of ${notes.length}` : ''} {notes.length === 1 && !search ? 'note' : 'notes'}
             </span>
           )}
-        </h1>
-        <SearchBar />
+        </div>
       </header>
 
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div className="mb-8">
         <QuickCapture />
       </div>
@@ -90,13 +98,13 @@ export function NotesDashboard() {
         <EmptyState title={`No notes match "${search}"`} />
       ) : (
         <NotesGrid
-          pinned={pinned}
-          others={others}
+          notes={sorted}
           onOpen={handleOpen}
           onTogglePin={handleTogglePin}
           onDelete={handleDelete}
         />
       )}
+      </main>
 
       {openedNote && <NoteDialog key={openedNote.id} note={openedNote} onClose={closeNote} onDelete={handleDelete} />}
       <Toasts />
