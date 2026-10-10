@@ -2,13 +2,14 @@ import { memo, useMemo, useState } from 'react'
 import { sectionOf, type Label, type Note, type NoteInput } from '../api/notes'
 import { colorStyles } from '../lib/colors'
 import { sanitize } from '../lib/html'
+import { ColorButton } from './ColorButton'
 import { ColorPicker } from './ColorPicker'
 import { IconButton } from './IconButton'
 import { LabelChips } from './LabelChips'
 import { LabelPicker } from './LabelPicker'
 import { Popover } from './Popover'
 import {
-  ArchiveIcon, DeleteForeverIcon, LabelIcon, PaletteIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon,
+  ArchiveIcon, DeleteForeverIcon, LabelIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon,
 } from './icons'
 import { Spinner } from './SaveButton'
 
@@ -102,9 +103,7 @@ export const NoteCard = memo(function NoteCard({
         ) : (
           <>
             <div className="relative">
-              <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
-                <PaletteIcon />
-              </IconButton>
+              <ColorButton color={note.color} active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')} />
               <Popover open={menu === 'color'} onClose={() => setMenu(null)}>
                 <ColorPicker
                   value={note.color}
