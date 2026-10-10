@@ -116,14 +116,15 @@ def test_first_account_adopts_orphaned_notes(store):
         assert second.get("/notes").json() == []
 
 
-def test_unhandled_errors_return_json_with_an_id(client, monkeypatch):
-    from store import InMemoryNoteStore
-
+def test_unhandled_errors_return_json_with_an_id(store, monkeypatch):
     def boom(self, user_id):
         raise RuntimeError("database exploded")
 
-    monkeypatch.setattr(InMemoryNoteStore, "list", boom)
-    monkeypatch.setattr("store.SqlNoteStore.list", boom)
-    r = client.get("/notes")
+    monkeypatch.setattr(type(store), "list", boom)
+    # The default TestClient re-raises server exceptions; we want the HTTP response.
+    with TestClient(app, raise_server_exceptions=False) as client:
+        app.state.store = store
+        client.post("/auth/signup", json=ALICE)
+        r = client.get("/notes")
     assert r.status_code == 500
     assert r.json()["detail"].startswith("Something went wrong on the server (error ")

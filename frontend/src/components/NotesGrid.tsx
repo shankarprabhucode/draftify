@@ -29,8 +29,6 @@ interface NotesGridProps extends CardHandlers {
   notes: Note[]
   /** Single column (Keep's list view) instead of the masonry wall. */
   list?: boolean
-  /** Split into Pinned / Others (Notes shelf only). */
-  sections?: boolean
   /** Disable dragging (e.g. while a search filter hides some notes). */
   dragDisabled?: boolean
   onMove: (move: MoveRequest) => void
@@ -79,35 +77,17 @@ function SortableNoteCard({ note, disabled, ...handlers }: { note: Note; disable
   )
 }
 
-function Section({ title, notes, disabled, list, ...handlers }: { title?: string; notes: Note[]; disabled: boolean; list: boolean } & CardHandlers) {
-  if (notes.length === 0) return null
-  return (
-    <section aria-label={title ?? 'Notes'} className="mb-8">
-      {title && (
-        <h2 className="mb-2 pl-2 text-[11px] font-medium tracking-wide text-[#5f6368] uppercase dark:text-[#9aa0a6]">
-          {title}
-        </h2>
-      )}
-      <div className={list ? 'notes-list' : 'notes-masonry'} style={{ gridAutoRows: ROW, gap: GAP }}>
-        {notes.map((note) => (
-          <SortableNoteCard key={note.id} note={note} disabled={disabled} {...handlers} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
 /**
- * Notes wall with drag-and-drop ordering. A plain click still opens a note;
- * moving the pointer a few pixels (or pressing and holding on touch) starts a drag.
- * Keyboard: focus a card, Space to pick up, arrows to move, Space to drop.
+ * Notes wall with drag-and-drop ordering. Pinned notes come first (the caller
+ * sorts), in the same wall rather than a separate section. A plain click still
+ * opens a note; moving the pointer a few pixels (or pressing and holding on
+ * touch) starts a drag. Keyboard: focus a card, Space to pick up, arrows to
+ * move, Space to drop.
  */
-export function NotesGrid({ notes, list = false, sections = true, dragDisabled = false, onMove, ...handlers }: NotesGridProps) {
+export function NotesGrid({ notes, list = false, dragDisabled = false, onMove, ...handlers }: NotesGridProps) {
   const [activeId, setActiveId] = useState<number | null>(null)
   const ids = useMemo(() => notes.map((n) => n.id), [notes])
   const activeNote = activeId === null ? null : notes.find((n) => n.id === activeId) ?? null
-  const pinned = sections ? notes.filter((n) => n.pinned) : []
-  const others = sections ? notes.filter((n) => !n.pinned) : notes
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -142,8 +122,11 @@ export function NotesGrid({ notes, list = false, sections = true, dragDisabled =
       onDragCancel={() => setActiveId(null)}
     >
       <SortableContext items={ids} strategy={rectSortingStrategy}>
-        <Section title={pinned.length ? 'Pinned' : undefined} notes={pinned} disabled={dragDisabled} list={list} {...handlers} />
-        <Section title={pinned.length ? 'Others' : undefined} notes={others} disabled={dragDisabled} list={list} {...handlers} />
+        <div className={list ? 'notes-list' : 'notes-masonry'} style={{ gridAutoRows: ROW, gap: GAP }} aria-label="Notes">
+          {notes.map((note) => (
+            <SortableNoteCard key={note.id} note={note} disabled={dragDisabled} {...handlers} />
+          ))}
+        </div>
       </SortableContext>
       <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
         {activeNote && (

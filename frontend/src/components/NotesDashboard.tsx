@@ -151,7 +151,6 @@ export function NotesDashboard({ user }: { user: User }) {
               <NotesGrid
                 notes={sorted}
                 list={view === 'list'}
-                sections={section === 'notes'}
                 dragDisabled={filtering || section === 'trash'}
                 onMove={(m) => move.mutate(m)}
                 onOpen={handleOpen}
