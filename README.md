@@ -27,7 +27,11 @@ With no configuration the backend uses an in-memory store, so it runs with zero 
 - **Any Postgres**: a standard `postgresql://user:pass@host:5432/db` URL.
 - **SQLite**: `sqlite:///./notes.db` for a local file.
 
-The `notes` table is created automatically on startup.
+The tables are created automatically on startup. Set `SECRET_KEY` (any long random string) to sign session cookies; without it the backend uses a development key and refuses to start on Vercel.
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
 **Frontend** (port 5173):
 
@@ -37,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in the browser. Set `VITE_API_URL` if you want to point at a different host.
+Open http://localhost:5173 and create an account. The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in the browser. Set `VITE_API_URL` if you want to point at a different host.
 
 **Tests:**
 
@@ -49,6 +53,8 @@ cd frontend && npm test
 Interactive API docs are at http://localhost:8000/docs.
 
 ## Decisions
+
+**Accounts and sessions.** Email and password sign-up and sign-in live in the FastAPI backend rather than a third-party provider, so the zero-setup in-memory mode still works end to end. Passwords are hashed with Argon2. A session is a signed JWT (seven days) in an HTTP-only, SameSite=Lax cookie, marked Secure in production; the browser never reads it, and because the API is same-origin on both the dev proxy and Vercel there is no token to pass around. Every note and label has an owner and every store method takes the owner's id, so authorisation is enforced in one place rather than per route. Login attempts are rate-limited per client and email, and the wrong-email and wrong-password responses are identical. The first account to sign up adopts any notes and labels that predate accounts. The frontend shows the sign-in page until `/auth/me` succeeds and drops back to it on any 401.
 
 **Rich text with TipTap.** The editor is [TipTap](https://tiptap.dev) (ProseMirror underneath), chosen because it is headless, so the look is entirely ours, and it has first-class React bindings. `src/editor/` holds the wrapper, a bubble toolbar that appears over a selection (bold, italic, underline, strikethrough, highlight, code, links, headings, lists) and a slash-command extension built on TipTap's suggestion utility: typing `/` opens a menu of block types. Content is stored as HTML in the note's `content` field and sanitised with DOMPurify before being rendered in card previews, since it comes from the server. Search runs over the plain text of that HTML.
 
@@ -85,6 +91,7 @@ Interactive API docs are at http://localhost:8000/docs.
 - **Rich-text editor** with bubble toolbar, slash commands, checklists, code blocks, links and highlights.
 - **Labels** with sidebar filtering and inline creation; **grid/list view** toggle.
 - **Archive and Trash** shelves with restore, delete forever, empty trash and a seven-day purge.
+- **Accounts**: sign-up and sign-in with hashed passwords, cookie sessions, per-user data and login rate limiting.
 - **Drag-and-drop reordering** with mouse, touch and keyboard, persisted per note.
 - **Colours, pinning, autosave, undo-delete, dark mode, keyboard shortcuts** (⌘K search, ⌘S save, Esc to close, `/` for blocks).
 - **Search**: filters by title or the plain text of the content, case-insensitive, with an empty state for no matches.
@@ -111,7 +118,7 @@ Import the repo in Vercel and use these settings:
 | Root Directory | `./` |
 | Build Command | `cd frontend && npm ci && npm run build` |
 | Output Directory | `frontend/dist` |
-| Environment Variable | `DATABASE_URL` = Supabase **Transaction pooler** string (port 6543) |
+| Environment Variables | `DATABASE_URL` = Supabase **Transaction pooler** string (port 6543); `SECRET_KEY` = a long random string (see above) |
 
 Use the transaction pooler rather than the session pooler for serverless: functions open many short-lived connections, and session mode would exhaust the pool. Without `DATABASE_URL` the function falls back to the in-memory store, which resets on every cold start, so set it before relying on the deployment.
 

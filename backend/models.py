@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
+from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
 NoteColor = Literal[
@@ -12,6 +13,7 @@ NoteColor = Literal[
 # Content is stored as sanitised HTML produced by the rich-text editor.
 MAX_CONTENT_LENGTH = 200_000
 MAX_LABEL_LENGTH = 50
+MIN_PASSWORD_LENGTH = 8
 # Notes in the trash are purged after this long.
 TRASH_RETENTION = timedelta(days=7)
 
@@ -26,6 +28,17 @@ def _aware(value: datetime) -> datetime:
 
 
 # ---------------------------------------------------------------- API schemas
+
+
+class Credentials(SQLModel):
+    email: EmailStr
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128)
+
+
+class User(SQLModel):
+    id: int
+    email: str
+    created_at: datetime
 
 
 class LabelIn(SQLModel):
@@ -75,6 +88,19 @@ class ReorderIn(SQLModel):
 # ---------------------------------------------------------------- tables
 
 
+class UserRow(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: int | None = Field(default=None, primary_key=True)
+    email: str = Field(max_length=254, unique=True, index=True)
+    password_hash: str
+    created_at: datetime = Field(default_factory=utcnow)
+
+    def to_user(self) -> User:
+        assert self.id is not None
+        return User(id=self.id, email=self.email, created_at=_aware(self.created_at))
+
+
 class NoteLabelLink(SQLModel, table=True):
     __tablename__ = "note_labels"
 
@@ -86,7 +112,8 @@ class LabelRow(SQLModel, table=True):
     __tablename__ = "labels"
 
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(max_length=MAX_LABEL_LENGTH, unique=True)
+    user_id: int | None = Field(default=None, foreign_key="users.id", index=True)
+    name: str = Field(max_length=MAX_LABEL_LENGTH)
     notes: list["NoteRow"] = Relationship(back_populates="labels", link_model=NoteLabelLink)
 
     def to_label(self) -> Label:
@@ -100,6 +127,7 @@ class NoteRow(SQLModel, table=True):
     __tablename__ = "notes"
 
     id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, foreign_key="users.id", index=True)
     title: str = ""
     content: str = ""
     color: str = "default"

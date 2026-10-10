@@ -58,12 +58,13 @@ export const NoteCard = memo(function NoteCard({
         ) : untitled ? (
           <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Empty note</p>
         ) : null}
-        {note.labels.length > 0 && (
-          <div className="mt-3">
-            <LabelChips labels={note.labels} onClick={section === 'trash' ? undefined : onLabelClick} />
-          </div>
-        )}
       </button>
+      {/* Chips are buttons themselves, so they sit beside the open button, not inside it. */}
+      {note.labels.length > 0 && (
+        <div className="px-4 pt-1 pb-1">
+          <LabelChips labels={note.labels} onClick={section === 'trash' ? undefined : onLabelClick} />
+        </div>
+      )}
 
       {section === 'notes' && (
         <div className="absolute top-1.5 right-1.5">

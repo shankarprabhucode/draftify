@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import type { User } from '../api/auth'
 import { sectionOf, toInput, type Label, type Note, type NoteInput } from '../api/notes'
 import { useLabels } from '../hooks/useLabels'
 import { useNoteActions } from '../hooks/useNoteActions'
@@ -23,7 +24,7 @@ const EMPTY_TITLES = {
   trash: 'No notes in Trash',
 }
 
-export function NotesDashboard() {
+export function NotesDashboard({ user }: { user: User }) {
   const {
     search, setSearch, openNoteId, openNote, closeNote,
     section, activeLabelId, setActiveLabelId, view, sidebarOpen, labelsDialogOpen, setLabelsDialogOpen,
@@ -85,7 +86,7 @@ export function NotesDashboard() {
 
   return (
     <div className="min-h-screen">
-      <TopBar />
+      <TopBar user={user} />
       <div className="flex">
         <Sidebar />
         <main className={`min-w-0 flex-1 px-4 pt-6 pb-28 transition-[padding] sm:px-8 ${sidebarOpen ? '' : 'md:pl-10'}`}>

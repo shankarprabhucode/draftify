@@ -1,21 +1,5 @@
 """Label CRUD and note/label links, against both stores."""
 
-import pytest
-from fastapi.testclient import TestClient
-
-from main import app, get_store
-from store import InMemoryNoteStore, SqlNoteStore, make_engine
-
-
-@pytest.fixture(params=["memory", "sqlite"])
-def client(request):
-    store = InMemoryNoteStore() if request.param == "memory" else SqlNoteStore(make_engine("sqlite://"))
-    app.dependency_overrides[get_store] = lambda: store
-    with TestClient(app) as client:
-        yield client
-    app.dependency_overrides.clear()
-    store.clear()
-
 
 def test_label_crud(client):
     assert client.get("/labels").json() == []

@@ -19,6 +19,8 @@ def _load_vercel_app():
 def test_api_prefix_routes_to_notes():
     app = _load_vercel_app()
     with TestClient(app) as client:
+        assert client.get("/api/notes").status_code == 401
+        assert client.post("/api/auth/signup", json={"email": "v@example.com", "password": "long enough pw"}).status_code == 201
         assert client.get("/api/notes").status_code == 200
         created = client.post("/api/notes", json={"title": "via vercel"})
         assert created.status_code == 201

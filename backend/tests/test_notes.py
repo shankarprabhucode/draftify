@@ -1,24 +1,5 @@
 """API tests, run once against each store implementation."""
 
-import pytest
-from fastapi.testclient import TestClient
-
-from main import app, get_store
-from store import InMemoryNoteStore, SqlNoteStore, make_engine
-
-
-@pytest.fixture(params=["memory", "sqlite"])
-def client(request):
-    if request.param == "memory":
-        store = InMemoryNoteStore()
-    else:
-        store = SqlNoteStore(make_engine("sqlite://"))
-
-    app.dependency_overrides[get_store] = lambda: store
-    with TestClient(app) as client:
-        yield client
-    app.dependency_overrides.clear()
-    store.clear()
 
 
 def test_crud_round_trip(client):
@@ -132,27 +113,31 @@ def test_archiving_unpins(client):
     assert back["archived"] is False
 
 
-def test_old_trash_is_purged_on_list():
+def test_old_trash_is_purged_on_list(client, store):
     from datetime import timedelta
 
     from models import utcnow
 
-    store = InMemoryNoteStore()
-    app.dependency_overrides[get_store] = lambda: store
-    try:
-        with TestClient(app) as client:
-            old = client.post("/notes", json={"title": "old"}).json()
-            fresh = client.post("/notes", json={"title": "fresh"}).json()
-            client.delete(f"/notes/{old['id']}")
-            client.delete(f"/notes/{fresh['id']}")
-            # Backdate one deletion past the retention window.
-            with store._lock:
-                store._notes[old["id"]] = store._notes[old["id"]].model_copy(
-                    update={"deleted_at": utcnow() - timedelta(days=8)}
-                )
-            assert [n["title"] for n in client.get("/notes").json()] == ["fresh"]
-    finally:
-        app.dependency_overrides.clear()
+    old = client.post("/notes", json={"title": "old"}).json()
+    fresh = client.post("/notes", json={"title": "fresh"}).json()
+    client.delete(f"/notes/{old['id']}")
+    client.delete(f"/notes/{fresh['id']}")
+    # Backdate one deletion past the retention window.
+    if hasattr(store, "_engine"):
+        from sqlmodel import Session
+
+        from models import NoteRow
+
+        with Session(store._engine) as s:
+            row = s.get(NoteRow, old["id"])
+            row.deleted_at = utcnow() - timedelta(days=8)
+            s.add(row)
+            s.commit()
+    else:
+        with store._lock:
+            entry = store._notes[old["id"]]
+            entry.note = entry.note.model_copy(update={"deleted_at": utcnow() - timedelta(days=8)})
+    assert [n["title"] for n in client.get("/notes").json()] == ["fresh"]
 
 
 def test_validation(client):
@@ -164,17 +149,23 @@ def test_migration_adds_columns_to_old_table():
     """A table from the first release (id/title/content only) gains the new columns."""
     from sqlalchemy import text
 
-    from store import migrate
+    from store import SqlNoteStore, make_engine, migrate
 
     engine = make_engine("sqlite://")
     with engine.begin() as conn:
         conn.execute(text("CREATE TABLE notes (id INTEGER PRIMARY KEY, title VARCHAR, content VARCHAR)"))
         conn.execute(text("INSERT INTO notes (title, content) VALUES ('old', 'row')"))
+        conn.execute(text("CREATE TABLE labels (id INTEGER PRIMARY KEY, name VARCHAR)"))
 
-    assert migrate(engine) == ["color", "pinned", "updated_at", "position", "archived", "deleted_at"]
+    assert migrate(engine) == [
+        "notes.color", "notes.pinned", "notes.updated_at", "notes.position",
+        "notes.archived", "notes.deleted_at", "notes.user_id", "labels.user_id",
+    ]
     assert migrate(engine) == []  # idempotent
 
     store = SqlNoteStore(engine)
-    [note] = store.list()
+    user = store.create_user("first@example.com", "hash")
+    assert store.claim_orphans(user.id) == 1
+    [note] = store.list(user.id)
     assert (note.title, note.color, note.pinned, note.position) == ("old", "default", False, -1)
     assert note.updated_at is not None

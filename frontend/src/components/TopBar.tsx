@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
+import type { User } from '../api/auth'
 import { useNotesUI } from '../hooks/useNotesUI'
+import { AccountMenu } from './AccountMenu'
 import { CloseIcon, GridIcon, ListIcon, MenuIcon, SearchIcon } from './icons'
 import { IconButton } from './IconButton'
 
-export function TopBar() {
+export function TopBar({ user }: { user: User }) {
   const { search, setSearch, toggleSidebar, view, setView } = useNotesUI()
   const input = useRef<HTMLInputElement>(null)
 
@@ -52,7 +54,7 @@ export function TopBar() {
         )}
       </div>
 
-      <div className="ml-auto flex items-center">
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
         <IconButton
           label={view === 'grid' ? 'List view' : 'Grid view'}
           onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
@@ -60,6 +62,7 @@ export function TopBar() {
         >
           {view === 'grid' ? <ListIcon /> : <GridIcon />}
         </IconButton>
+        <AccountMenu user={user} />
       </div>
     </header>
   )
