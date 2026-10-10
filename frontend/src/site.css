@@ -14,3 +14,17 @@ body { @apply bg-white text-[#202124] antialiased dark:bg-[#202124] dark:text-[#
 .rise { animation: rise 500ms cubic-bezier(0.2, 0, 0, 1) both; }
 .rise-2 { animation-delay: 120ms; }
 .rise-3 { animation-delay: 240ms; }
+
+/* ---------- Image slider ---------- */
+.slider { @apply relative outline-none; }
+.slider:focus-visible { @apply rounded-xl ring-2 ring-[#1a73e8]; }
+.slider-track { @apply flex overflow-hidden rounded-xl; }
+.slide { @apply w-full shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.2,0,0,1)]; }
+.slider-btn {
+  @apply absolute top-[42%] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-[#202124] shadow-md backdrop-blur transition hover:bg-white dark:border-white/15 dark:bg-[#303134]/90 dark:text-[#e8eaed] dark:hover:bg-[#3c4043];
+}
+.slider-prev { @apply left-2; }
+.slider-next { @apply right-2; }
+.slider-dots { @apply mt-3 flex justify-center gap-2; }
+.dot { @apply h-2 w-2 rounded-full bg-black/20 transition dark:bg-white/25; }
+.dot[aria-current="true"] { @apply w-5 bg-[#202124] dark:bg-[#e8eaed]; }
