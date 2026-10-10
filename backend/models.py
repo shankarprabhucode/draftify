@@ -1,6 +1,6 @@
 """Pydantic/SQLModel schemas shared by the API and the stores."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -12,10 +12,17 @@ NoteColor = Literal[
 # Content is stored as sanitised HTML produced by the rich-text editor.
 MAX_CONTENT_LENGTH = 200_000
 MAX_LABEL_LENGTH = 50
+# Notes in the trash are purged after this long.
+TRASH_RETENTION = timedelta(days=7)
 
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _aware(value: datetime) -> datetime:
+    """SQLite drops the timezone; treat naive values as UTC."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 # ---------------------------------------------------------------- API schemas
@@ -36,6 +43,7 @@ class NoteIn(SQLModel):
     content: str = Field(default="", max_length=MAX_CONTENT_LENGTH)
     color: NoteColor = "default"
     pinned: bool = False
+    archived: bool = False
     label_ids: list[int] = Field(default_factory=list)
 
 
@@ -47,9 +55,15 @@ class Note(SQLModel):
     content: str
     color: NoteColor
     pinned: bool
+    archived: bool
     position: int
     updated_at: datetime
+    deleted_at: datetime | None = None
     labels: list[Label] = Field(default_factory=list)
+
+    @property
+    def trashed(self) -> bool:
+        return self.deleted_at is not None
 
 
 class ReorderIn(SQLModel):
@@ -90,22 +104,23 @@ class NoteRow(SQLModel, table=True):
     content: str = ""
     color: str = "default"
     pinned: bool = False
+    archived: bool = False
     position: int = Field(default=0, index=True)
     updated_at: datetime = Field(default_factory=utcnow)
+    deleted_at: datetime | None = Field(default=None, index=True)
     labels: list[LabelRow] = Relationship(back_populates="notes", link_model=NoteLabelLink)
 
     def to_note(self) -> Note:
         assert self.id is not None
-        updated = self.updated_at
-        if updated.tzinfo is None:  # SQLite drops the timezone
-            updated = updated.replace(tzinfo=timezone.utc)
         return Note(
             id=self.id,
             title=self.title,
             content=self.content,
             color=self.color,  # type: ignore[arg-type]
             pinned=self.pinned,
+            archived=self.archived,
             position=self.position,
-            updated_at=updated,
+            updated_at=_aware(self.updated_at),
+            deleted_at=_aware(self.deleted_at) if self.deleted_at else None,
             labels=sorted((l.to_label() for l in self.labels), key=lambda l: l.name.lower()),
         )

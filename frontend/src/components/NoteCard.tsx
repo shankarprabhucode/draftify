@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import type { Label, Note, NoteInput } from '../api/notes'
+import { sectionOf, type Label, type Note, type NoteInput } from '../api/notes'
 import { colorStyles } from '../lib/colors'
 import { sanitize } from '../lib/html'
 import { ColorPicker } from './ColorPicker'
@@ -7,7 +7,9 @@ import { IconButton } from './IconButton'
 import { LabelChips } from './LabelChips'
 import { LabelPicker } from './LabelPicker'
 import { Popover } from './Popover'
-import { LabelIcon, PaletteIcon, PinIcon, TrashIcon } from './icons'
+import {
+  ArchiveIcon, DeleteForeverIcon, LabelIcon, PaletteIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon,
+} from './icons'
 import { Spinner } from './SaveButton'
 
 export interface NoteCardProps {
@@ -15,11 +17,17 @@ export interface NoteCardProps {
   onOpen: (note: Note) => void
   /** Partial update (colour, pin, labels) from the card's own controls. */
   onPatch: (note: Note, patch: Partial<NoteInput>) => void
+  onArchive: (note: Note, archived: boolean) => void
+  /** Move to trash (from Notes/Archive) or delete forever (from Trash). */
   onDelete: (note: Note) => void
+  onRestore: (note: Note) => void
   onLabelClick?: (label: Label) => void
 }
 
-export const NoteCard = memo(function NoteCard({ note, onOpen, onPatch, onDelete, onLabelClick }: NoteCardProps) {
+export const NoteCard = memo(function NoteCard({
+  note, onOpen, onPatch, onArchive, onDelete, onRestore, onLabelClick,
+}: NoteCardProps) {
+  const section = sectionOf(note)
   const pendingCreate = note.id < 0
   const html = useMemo(() => sanitize(note.content), [note.content])
   const untitled = !note.title.trim()
@@ -46,31 +54,30 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onPatch, onDelete
           </h3>
         )}
         {html ? (
-          <div
-            className="rich-text note-preview max-h-80 overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <div className="rich-text note-preview max-h-80 overflow-hidden" dangerouslySetInnerHTML={{ __html: html }} />
         ) : untitled ? (
           <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Empty note</p>
         ) : null}
         {note.labels.length > 0 && (
           <div className="mt-3">
-            <LabelChips labels={note.labels} onClick={onLabelClick} />
+            <LabelChips labels={note.labels} onClick={section === 'trash' ? undefined : onLabelClick} />
           </div>
         )}
       </button>
 
-      <div className="absolute top-1.5 right-1.5">
-        <IconButton
-          label={note.pinned ? 'Unpin note' : 'Pin note'}
-          active={note.pinned}
-          onClick={() => onPatch(note, { pinned: !note.pinned })}
-          disabled={pendingCreate}
-          className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}
-        >
-          <PinIcon filled={note.pinned} />
-        </IconButton>
-      </div>
+      {section === 'notes' && (
+        <div className="absolute top-1.5 right-1.5">
+          <IconButton
+            label={note.pinned ? 'Unpin note' : 'Pin note'}
+            active={note.pinned}
+            onClick={() => onPatch(note, { pinned: !note.pinned })}
+            disabled={pendingCreate}
+            className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}
+          >
+            <PinIcon filled={note.pinned} />
+          </IconButton>
+        </div>
+      )}
 
       {/* Keep-style hover toolbar */}
       <div
@@ -82,13 +89,22 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onPatch, onDelete
           <span className="flex items-center gap-1.5 px-2 text-[11px] text-[#5f6368]" aria-live="polite">
             <Spinner className="h-3 w-3" /> Saving…
           </span>
+        ) : section === 'trash' ? (
+          <>
+            <IconButton label="Restore note" onClick={() => onRestore(note)}>
+              <RestoreIcon />
+            </IconButton>
+            <IconButton label="Delete forever" onClick={() => onDelete(note)}>
+              <DeleteForeverIcon />
+            </IconButton>
+          </>
         ) : (
           <>
             <div className="relative">
               <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
                 <PaletteIcon />
               </IconButton>
-              <Popover open={menu === 'color'} onClose={() => setMenu(null)} side="top">
+              <Popover open={menu === 'color'} onClose={() => setMenu(null)}>
                 <ColorPicker
                   value={note.color}
                   onChange={(color) => {
@@ -109,6 +125,15 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onPatch, onDelete
                 />
               </Popover>
             </div>
+            {section === 'archive' ? (
+              <IconButton label="Unarchive note" onClick={() => onArchive(note, false)}>
+                <UnarchiveIcon />
+              </IconButton>
+            ) : (
+              <IconButton label="Archive note" onClick={() => onArchive(note, true)}>
+                <ArchiveIcon />
+              </IconButton>
+            )}
             <IconButton label="Delete note" onClick={() => onDelete(note)}>
               <TrashIcon />
             </IconButton>

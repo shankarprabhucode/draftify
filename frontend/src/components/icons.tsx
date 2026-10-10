@@ -55,4 +55,16 @@ export const PlusIcon = ({ className = 'h-4 w-4' }: P) => (
 export const CheckIcon = ({ className = 'h-4 w-4' }: P) => (
   <svg {...base(className)}><path d="M5 13l4 4L19 7" /></svg>
 )
+export const ArchiveIcon = ({ className = 'h-4 w-4' }: P) => (
+  <svg {...base(className)}><path d="M3 7h18M5 7l1 13h12l1-13M4 4h16v3H4zM10 12h4" /></svg>
+)
+export const UnarchiveIcon = ({ className = 'h-4 w-4' }: P) => (
+  <svg {...base(className)}><path d="M3 7h18M5 7l1 13h12l1-13M4 4h16v3H4zM12 17v-6m-3 3 3-3 3 3" /></svg>
+)
+export const RestoreIcon = ({ className = 'h-4 w-4' }: P) => (
+  <svg {...base(className)}><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 8v4l3 2" /></svg>
+)
+export const DeleteForeverIcon = ({ className = 'h-4 w-4' }: P) => (
+  <svg {...base(className)}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11l4 5M14 11l-4 5" /></svg>
+)
 export const PencilIcon = EditIcon

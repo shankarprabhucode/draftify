@@ -134,7 +134,25 @@ def update_note(note_id: int, data: NoteIn, store: Store) -> Note:
     return note
 
 
+@app.delete("/notes/trash", status_code=status.HTTP_204_NO_CONTENT)
+def empty_trash(store: Store) -> None:
+    """Permanently delete every note in the trash."""
+    store.empty_trash()
+
+
 @app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_note(note_id: int, store: Store) -> None:
-    if not store.delete(note_id):
+def delete_note(note_id: int, store: Store, permanent: bool = False) -> None:
+    """Move a note to the trash, or delete it for good with ``?permanent=true``."""
+    if permanent:
+        if not store.delete(note_id):
+            raise _not_found(note_id)
+    elif store.trash(note_id) is None:
         raise _not_found(note_id)
+
+
+@app.post("/notes/{note_id}/restore", response_model=Note)
+def restore_note(note_id: int, store: Store) -> Note:
+    note = store.restore(note_id)
+    if note is None:
+        raise _not_found(note_id)
+    return note

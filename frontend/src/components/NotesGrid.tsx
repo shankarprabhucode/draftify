@@ -29,6 +29,8 @@ interface NotesGridProps extends CardHandlers {
   notes: Note[]
   /** Single column (Keep's list view) instead of the masonry wall. */
   list?: boolean
+  /** Split into Pinned / Others (Notes shelf only). */
+  sections?: boolean
   /** Disable dragging (e.g. while a search filter hides some notes). */
   dragDisabled?: boolean
   onMove: (move: MoveRequest) => void
@@ -100,12 +102,12 @@ function Section({ title, notes, disabled, list, ...handlers }: { title?: string
  * moving the pointer a few pixels (or pressing and holding on touch) starts a drag.
  * Keyboard: focus a card, Space to pick up, arrows to move, Space to drop.
  */
-export function NotesGrid({ notes, list = false, dragDisabled = false, onMove, ...handlers }: NotesGridProps) {
+export function NotesGrid({ notes, list = false, sections = true, dragDisabled = false, onMove, ...handlers }: NotesGridProps) {
   const [activeId, setActiveId] = useState<number | null>(null)
   const ids = useMemo(() => notes.map((n) => n.id), [notes])
   const activeNote = activeId === null ? null : notes.find((n) => n.id === activeId) ?? null
-  const pinned = notes.filter((n) => n.pinned)
-  const others = notes.filter((n) => !n.pinned)
+  const pinned = sections ? notes.filter((n) => n.pinned) : []
+  const others = sections ? notes.filter((n) => !n.pinned) : notes
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -146,7 +148,7 @@ export function NotesGrid({ notes, list = false, dragDisabled = false, onMove, .
       <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
         {activeNote && (
           <div className="rotate-1 scale-[1.03] cursor-grabbing shadow-keep">
-            <NoteCard note={activeNote} onOpen={() => {}} onPatch={() => {}} onDelete={() => {}} />
+            <NoteCard note={activeNote} onOpen={() => {}} onPatch={() => {}} onArchive={() => {}} onDelete={() => {}} onRestore={() => {}} />
           </div>
         )}
       </DragOverlay>

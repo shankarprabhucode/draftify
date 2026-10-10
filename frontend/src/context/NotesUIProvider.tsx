@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import type { Section } from '../api/notes'
 import { NotesUIContext, type NotesUIContextValue, type ViewMode } from './notesUIContext'
 
 function readPref<T extends string>(key: string, fallback: T): T {
@@ -24,7 +25,8 @@ function writePref(key: string, value: string) {
 export function NotesUIProvider({ children }: { children: ReactNode }) {
   const [search, setSearch] = useState('')
   const [openNoteId, setOpenNoteId] = useState<number | null>(null)
-  const [activeLabelId, setActiveLabelId] = useState<number | null>(null)
+  const [activeLabelId, setActiveLabelIdState] = useState<number | null>(null)
+  const [section, setSectionState] = useState<Section>('notes')
   const [view, setViewState] = useState<ViewMode>(() => readPref('draftify.view', 'grid'))
   const [sidebarOpen, setSidebarOpen] = useState(() => readPref('draftify.sidebar', 'open') === 'open')
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false)
@@ -36,8 +38,16 @@ export function NotesUIProvider({ children }: { children: ReactNode }) {
       openNoteId,
       openNote: (id) => setOpenNoteId(id),
       closeNote: () => setOpenNoteId(null),
+      section,
+      setSection: (next) => {
+        setSectionState(next)
+        setActiveLabelIdState(null)
+      },
       activeLabelId,
-      setActiveLabelId,
+      setActiveLabelId: (id) => {
+        setActiveLabelIdState(id)
+        if (id !== null) setSectionState('notes')
+      },
       view,
       setView: (v) => {
         setViewState(v)
@@ -52,7 +62,7 @@ export function NotesUIProvider({ children }: { children: ReactNode }) {
       labelsDialogOpen,
       setLabelsDialogOpen,
     }),
-    [search, openNoteId, activeLabelId, view, sidebarOpen, labelsDialogOpen],
+    [search, openNoteId, section, activeLabelId, view, sidebarOpen, labelsDialogOpen],
   )
 
   return <NotesUIContext.Provider value={value}>{children}</NotesUIContext.Provider>

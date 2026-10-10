@@ -32,6 +32,8 @@ def test_crud_round_trip(client):
     assert note["content"] == "<p>hello</p>"
     assert note["color"] == "default"
     assert note["pinned"] is False
+    assert note["archived"] is False
+    assert note["deleted_at"] is None
     assert note["updated_at"].endswith("Z") or "+00:00" in note["updated_at"]
 
     updated = client.put(
@@ -46,7 +48,7 @@ def test_crud_round_trip(client):
     assert client.get("/notes").json() == [body]
     assert client.get(f"/notes/{note['id']}").json() == body
 
-    assert client.delete(f"/notes/{note['id']}").status_code == 204
+    assert client.delete(f"/notes/{note['id']}", params={"permanent": "true"}).status_code == 204
     assert client.get("/notes").json() == []
 
 
@@ -97,6 +99,60 @@ def test_missing_note_returns_404(client):
     assert client.get("/notes/99").status_code == 404
     assert client.put("/notes/99", json={"title": "x"}).status_code == 404
     assert client.delete("/notes/99").status_code == 404
+    assert client.delete("/notes/99", params={"permanent": "true"}).status_code == 404
+    assert client.post("/notes/99/restore").status_code == 404
+
+
+def test_trash_restore_and_empty(client):
+    a = client.post("/notes", json={"title": "a", "pinned": True}).json()
+    b = client.post("/notes", json={"title": "b"}).json()
+
+    # Soft delete keeps the note, stamps deleted_at and unpins it.
+    assert client.delete(f"/notes/{a['id']}").status_code == 204
+    trashed = client.get(f"/notes/{a['id']}").json()
+    assert trashed["deleted_at"] is not None
+    assert trashed["pinned"] is False
+    assert {n["id"] for n in client.get("/notes").json()} == {a["id"], b["id"]}
+
+    restored = client.post(f"/notes/{a['id']}/restore").json()
+    assert restored["deleted_at"] is None
+
+    client.delete(f"/notes/{a['id']}")
+    client.delete(f"/notes/{b['id']}")
+    assert client.delete("/notes/trash").status_code == 204
+    assert client.get("/notes").json() == []
+
+
+def test_archiving_unpins(client):
+    n = client.post("/notes", json={"title": "a", "pinned": True}).json()
+    archived = client.put(f"/notes/{n['id']}", json={"title": "a", "pinned": True, "archived": True}).json()
+    assert archived["archived"] is True
+    assert archived["pinned"] is False
+    back = client.put(f"/notes/{n['id']}", json={"title": "a", "archived": False}).json()
+    assert back["archived"] is False
+
+
+def test_old_trash_is_purged_on_list():
+    from datetime import timedelta
+
+    from models import utcnow
+
+    store = InMemoryNoteStore()
+    app.dependency_overrides[get_store] = lambda: store
+    try:
+        with TestClient(app) as client:
+            old = client.post("/notes", json={"title": "old"}).json()
+            fresh = client.post("/notes", json={"title": "fresh"}).json()
+            client.delete(f"/notes/{old['id']}")
+            client.delete(f"/notes/{fresh['id']}")
+            # Backdate one deletion past the retention window.
+            with store._lock:
+                store._notes[old["id"]] = store._notes[old["id"]].model_copy(
+                    update={"deleted_at": utcnow() - timedelta(days=8)}
+                )
+            assert [n["title"] for n in client.get("/notes").json()] == ["fresh"]
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_validation(client):
@@ -115,7 +171,7 @@ def test_migration_adds_columns_to_old_table():
         conn.execute(text("CREATE TABLE notes (id INTEGER PRIMARY KEY, title VARCHAR, content VARCHAR)"))
         conn.execute(text("INSERT INTO notes (title, content) VALUES ('old', 'row')"))
 
-    assert migrate(engine) == ["color", "pinned", "updated_at", "position"]
+    assert migrate(engine) == ["color", "pinned", "updated_at", "position", "archived", "deleted_at"]
     assert migrate(engine) == []  # idempotent
 
     store = SqlNoteStore(engine)

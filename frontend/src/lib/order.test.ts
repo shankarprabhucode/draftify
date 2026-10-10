@@ -3,7 +3,7 @@ import type { Note } from '../api/notes'
 import { arrayMove, sortNotes, topPosition } from './order'
 
 const n = (id: number, position: number, pinned = false): Note => ({
-  id, position, pinned, title: String(id), content: '', color: 'default', updated_at: '', labels: [],
+  id, position, pinned, title: String(id), content: '', color: 'default', updated_at: '', labels: [], archived: false, deleted_at: null,
 })
 
 describe('order helpers', () => {

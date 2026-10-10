@@ -58,6 +58,8 @@ Interactive API docs are at http://localhost:8000/docs.
 
 **Keep's visual language.** Keep's light and dark palettes are used verbatim (`src/lib/colors.ts`), cards carry their colour edge to edge with a hover toolbar (colour, label, delete) and a pin in the corner, and pinned notes sit under a PINNED heading above OTHERS. The wall is a CSS grid used as a masonry: each card measures itself with a ResizeObserver and spans the right number of fixed-height rows, which keeps drag-and-drop transforms predictable. A list view (single centred column) is one click away in the top bar.
 
+**Archive and Trash.** Notes carry an `archived` flag and a `deleted_at` timestamp. Archiving hides a note from the main wall (and unpins it, as Keep does); deleting moves it to the Trash, where it can be restored or deleted forever, and the store purges anything older than seven days on the next listing. `DELETE /notes/{id}` is the soft delete, `?permanent=true` the hard one, `POST /notes/{id}/restore` brings a note back and `DELETE /notes/trash` empties the trash. Every action is optimistic with an Undo toast; trashed notes open read-only.
+
 **Drag-and-drop ordering.** Cards can be dragged into any order with the mouse, by touch (press and hold), or from the keyboard (focus a card, Space to pick up, arrows to move, Space to drop), using [dnd-kit](https://dndkit.com). Each note has a `position`; the grid sorts pinned notes first and then by position, so editing a note no longer moves it. A drop sends one `POST /notes/reorder` with the full id order, applied optimistically with rollback. Dropping a note into the pinned group pins it, and pinning from the card or dialog puts the note at the top of its new group. Dragging is disabled while a search filter is active, because reordering a partial list would scramble the hidden notes. The layout is a CSS grid with top-aligned rows rather than a true masonry, since column-flow masonry and drag transforms do not mix.
 
 **TanStack Query for server state, Context for UI state.** Notes are server data, so they live in the query cache with automatic refetching and invalidation. The search string and "which editor is open" are purely client concerns, so they live in a small Context (`NotesUIProvider`). Keeping these separate avoids the common trap of mirroring server data into a global store and then fighting to keep it in sync.
@@ -82,6 +84,7 @@ Interactive API docs are at http://localhost:8000/docs.
 
 - **Rich-text editor** with bubble toolbar, slash commands, checklists, code blocks, links and highlights.
 - **Labels** with sidebar filtering and inline creation; **grid/list view** toggle.
+- **Archive and Trash** shelves with restore, delete forever, empty trash and a seven-day purge.
 - **Drag-and-drop reordering** with mouse, touch and keyboard, persisted per note.
 - **Colours, pinning, autosave, undo-delete, dark mode, keyboard shortcuts** (⌘K search, ⌘S save, Esc to close, `/` for blocks).
 - **Search**: filters by title or the plain text of the content, case-insensitive, with an empty state for no matches.
@@ -97,7 +100,8 @@ One Vercel project serves both halves from the same domain, so the frontend keep
 - `api/index.py` mounts the FastAPI app under `/api`; Vercel runs it as a Python serverless function.
 - `vercel.json` rewrites `/api/*` to that function.
 - `requirements.txt` at the repo root is what Vercel installs for the function.
-- When `VERCEL` is set, the engine uses `NullPool` (one connection per request) and disables server-side prepared statements so it works through a transaction-mode pooler.
+- `vercel.json` pins the function to Sydney (`syd1`), the same region as the Supabase project. Change it if your database lives elsewhere: a function in Virginia talking to a database in Sydney spent ~2 s per request on connection setup alone.
+- When `VERCEL` is set, the engine keeps a single pooled connection alive between warm invocations (`pool_size=1`, recycled every 4 minutes, pre-pinged) and disables server-side prepared statements so it works through a transaction-mode pooler.
 
 Import the repo in Vercel and use these settings:
 

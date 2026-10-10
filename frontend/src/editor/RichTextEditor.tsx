@@ -19,6 +19,8 @@ interface RichTextEditorProps {
   minHeight?: string
   /** Show the persistent formatting toolbar above the content. */
   toolbar?: boolean
+  /** Read-only rendering (e.g. a note in the trash). */
+  editable?: boolean
   className?: string
 }
 
@@ -29,6 +31,7 @@ export function RichTextEditor({
   autofocus = false,
   minHeight = '8rem',
   toolbar = false,
+  editable = true,
   className = '',
 }: RichTextEditorProps) {
   const editor = useEditor({
@@ -44,7 +47,8 @@ export function RichTextEditor({
       SlashCommand,
     ],
     content,
-    autofocus: autofocus ? 'end' : false,
+    editable,
+    autofocus: autofocus && editable ? 'end' : false,
     editorProps: {
       attributes: {
         class: 'rich-text outline-none',
@@ -62,11 +66,15 @@ export function RichTextEditor({
     if (content !== current) editor.commands.setContent(content, { emitUpdate: false })
   }, [editor, content])
 
+  useEffect(() => {
+    if (editor && editor.isEditable !== editable) editor.setEditable(editable)
+  }, [editor, editable])
+
   if (!editor) return null
 
   return (
     <div className={className}>
-      {toolbar && (
+      {toolbar && editable && (
         <div className="mb-3">
           <EditorToolbar editor={editor} />
         </div>

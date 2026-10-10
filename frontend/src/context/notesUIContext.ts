@@ -1,4 +1,5 @@
 import { createContext } from 'react'
+import type { Section } from '../api/notes'
 
 export type ViewMode = 'grid' | 'list'
 
@@ -9,7 +10,10 @@ export interface NotesUIContextValue {
   openNoteId: number | null
   openNote: (id: number) => void
   closeNote: () => void
-  /** Sidebar label filter; null shows every note. */
+  /** Notes, Archive or Trash. */
+  section: Section
+  setSection: (section: Section) => void
+  /** Sidebar label filter; null shows every note. Selecting a label returns to Notes. */
   activeLabelId: number | null
   setActiveLabelId: (id: number | null) => void
   view: ViewMode

@@ -26,10 +26,11 @@ function useOptimisticNotes() {
     queryClient.setQueryData<Note[]>(notesKey, (old = []) => updater(old))
 
   /** Turn an input (label ids) into note fields (label objects) using the labels cache. */
-  const fields = (input: NoteInput): Omit<Note, 'id' | 'position' | 'updated_at'> => {
+  const fields = (input: NoteInput): Omit<Note, 'id' | 'position' | 'updated_at' | 'deleted_at'> => {
     const all = queryClient.getQueryData<Label[]>(labelsKey) ?? []
     const { label_ids, ...rest } = input
-    return { ...rest, labels: all.filter((l) => label_ids.includes(l.id)) }
+    // Archived notes are never pinned (mirrors the server rule).
+    return { ...rest, pinned: input.pinned && !input.archived, labels: all.filter((l) => label_ids.includes(l.id)) }
   }
 
   return { snapshot, rollback, settle, patch, fields }
@@ -44,7 +45,7 @@ export function useCreateNote() {
       // Negative temporary id so it can't collide with server ids.
       patch((notes) => [
         ...notes,
-        { id: -Date.now(), position: topPosition(notes), updated_at: new Date().toISOString(), ...fields(input) },
+        { id: -Date.now(), position: topPosition(notes), updated_at: new Date().toISOString(), deleted_at: null, ...fields(input) },
       ])
       return { previous }
     },
@@ -63,8 +64,9 @@ export function useUpdateNote() {
         notes.map((n) => {
           if (n.id !== id) return n
           // Pinning or unpinning moves the note to the top of its new group.
-          const position = input.pinned !== n.pinned ? topPosition(notes) : n.position
-          return { ...n, ...fields(input), position, updated_at: new Date().toISOString() }
+          const next = fields(input)
+          const position = next.pinned !== n.pinned ? topPosition(notes) : n.position
+          return { ...n, ...next, position, updated_at: new Date().toISOString() }
         }),
       )
       return { previous }
@@ -74,7 +76,39 @@ export function useUpdateNote() {
   })
 }
 
-export function useDeleteNote() {
+/** Move to trash (soft delete). */
+export function useTrashNote() {
+  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  return useMutation({
+    mutationFn: notesApi.trash,
+    onMutate: async (id: number) => {
+      const previous = await snapshot()
+      patch((notes) =>
+        notes.map((n) => (n.id === id ? { ...n, deleted_at: new Date().toISOString(), pinned: false } : n)),
+      )
+      return { previous }
+    },
+    onError: (_err, _id, ctx) => ctx && rollback(ctx.previous),
+    onSettled: settle,
+  })
+}
+
+export function useRestoreNote() {
+  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  return useMutation({
+    mutationFn: notesApi.restore,
+    onMutate: async (id: number) => {
+      const previous = await snapshot()
+      patch((notes) => notes.map((n) => (n.id === id ? { ...n, deleted_at: null } : n)))
+      return { previous }
+    },
+    onError: (_err, _id, ctx) => ctx && rollback(ctx.previous),
+    onSettled: settle,
+  })
+}
+
+/** Permanent delete. */
+export function useDeleteForever() {
   const { snapshot, rollback, settle, patch } = useOptimisticNotes()
   return useMutation({
     mutationFn: notesApi.remove,
@@ -84,6 +118,20 @@ export function useDeleteNote() {
       return { previous }
     },
     onError: (_err, _id, ctx) => ctx && rollback(ctx.previous),
+    onSettled: settle,
+  })
+}
+
+export function useEmptyTrash() {
+  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  return useMutation({
+    mutationFn: notesApi.emptyTrash,
+    onMutate: async () => {
+      const previous = await snapshot()
+      patch((notes) => notes.filter((n) => !n.deleted_at))
+      return { previous }
+    },
+    onError: (_err, _vars, ctx) => ctx && rollback(ctx.previous),
     onSettled: settle,
   })
 }

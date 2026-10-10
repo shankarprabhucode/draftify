@@ -12,14 +12,15 @@ from __future__ import annotations
 import os
 from itertools import count
 from threading import Lock
+from datetime import datetime
 from typing import Protocol
 
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.orm import selectinload
-from sqlalchemy.pool import NullPool, StaticPool
+from sqlalchemy.pool import QueuePool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, func, select
 
-from models import Label, LabelIn, LabelRow, Note, NoteIn, NoteRow, utcnow
+from models import TRASH_RETENTION, Label, LabelIn, LabelRow, Note, NoteIn, NoteRow, utcnow
 
 
 class UnknownLabel(ValueError):
@@ -35,7 +36,19 @@ class NoteStore(Protocol):
     def get(self, note_id: int) -> Note | None: ...
     def create(self, data: NoteIn) -> Note: ...
     def update(self, note_id: int, data: NoteIn) -> Note | None: ...
-    def delete(self, note_id: int) -> bool: ...
+    def trash(self, note_id: int) -> Note | None:
+        """Soft delete: the note stays in the trash until purged or restored."""
+        ...
+
+    def restore(self, note_id: int) -> Note | None: ...
+    def delete(self, note_id: int) -> bool:
+        """Permanent delete."""
+        ...
+
+    def empty_trash(self) -> int:
+        """Permanently delete every trashed note. Returns how many went."""
+        ...
+
     def reorder(self, ids: list[int]) -> list[Note] | None:
         """Assign positions 0..n-1 in the given order. None if an id is unknown."""
         ...
@@ -50,6 +63,10 @@ class NoteStore(Protocol):
 def _display_order(note: Note) -> tuple[bool, int, int]:
     """Pinned first, then by position, newest first among equals."""
     return (not note.pinned, note.position, -note.id)
+
+
+def _purge_before() -> datetime:
+    return utcnow() - TRASH_RETENTION
 
 
 def _by_name(label: Label) -> str:
@@ -84,12 +101,20 @@ class InMemoryNoteStore:
             "title": data.title,
             "content": data.content,
             "color": data.color,
-            "pinned": data.pinned,
+            # Archived notes are never pinned (as in Keep).
+            "pinned": data.pinned and not data.archived,
+            "archived": data.archived,
             "labels": self._resolve_labels(data.label_ids),
         }
 
+    def _purge(self) -> None:
+        cutoff = _purge_before()
+        for nid in [n.id for n in self._notes.values() if n.deleted_at and n.deleted_at < cutoff]:
+            del self._notes[nid]
+
     def list(self) -> list[Note]:
         with self._lock:
+            self._purge()
             return sorted(self._notes.values(), key=_display_order)
 
     def get(self, note_id: int) -> Note | None:
@@ -109,15 +134,47 @@ class InMemoryNoteStore:
             current = self._notes.get(note_id)
             if current is None:
                 return None
+            fields = self._fields(data)
             # A note that is pinned or unpinned goes to the top of its new group.
-            position = self._top() if data.pinned != current.pinned else current.position
-            note = Note(id=note_id, position=position, updated_at=utcnow(), **self._fields(data))
+            position = self._top() if fields["pinned"] != current.pinned else current.position
+            note = Note(
+                id=note_id,
+                position=position,
+                updated_at=utcnow(),
+                deleted_at=current.deleted_at,
+                **fields,
+            )
+            self._notes[note_id] = note
+            return note
+
+    def trash(self, note_id: int) -> Note | None:
+        with self._lock:
+            current = self._notes.get(note_id)
+            if current is None:
+                return None
+            note = current.model_copy(update={"deleted_at": utcnow(), "pinned": False})
+            self._notes[note_id] = note
+            return note
+
+    def restore(self, note_id: int) -> Note | None:
+        with self._lock:
+            current = self._notes.get(note_id)
+            if current is None:
+                return None
+            note = current.model_copy(update={"deleted_at": None})
             self._notes[note_id] = note
             return note
 
     def delete(self, note_id: int) -> bool:
         with self._lock:
             return self._notes.pop(note_id, None) is not None
+
+    def empty_trash(self) -> int:
+        with self._lock:
+            trashed = [n.id for n in self._notes.values() if n.deleted_at]
+            for nid in trashed:
+                del self._notes[nid]
+            return len(trashed)
 
     def reorder(self, ids: list[int]) -> list[Note] | None:
         with self._lock:
@@ -194,6 +251,8 @@ _ADDED_COLUMNS: dict[str, tuple[str, str | None]] = {
     "updated_at": ("TIMESTAMP", "UPDATE notes SET updated_at = CURRENT_TIMESTAMP"),
     # Newest notes first for rows that predate manual ordering.
     "position": ("INTEGER NOT NULL DEFAULT 0", "UPDATE notes SET position = -id"),
+    "archived": ("BOOLEAN NOT NULL DEFAULT FALSE", None),
+    "deleted_at": ("TIMESTAMP", None),
 }
 
 
@@ -241,8 +300,15 @@ class SqlNoteStore:
             raise UnknownLabel(f"Unknown label ids: {sorted(missing)}")
         return list(rows)
 
+    def _purge(self, session: Session) -> None:
+        cutoff = _purge_before()
+        for row in session.exec(select(NoteRow).where(NoteRow.deleted_at < cutoff)).all():  # type: ignore[operator]
+            session.delete(row)
+        session.commit()
+
     def list(self) -> list[Note]:
         with Session(self._engine) as session:
+            self._purge(session)
             return self._all(session)
 
     def get(self, note_id: int) -> Note | None:
@@ -256,7 +322,8 @@ class SqlNoteStore:
                 title=data.title,
                 content=data.content,
                 color=data.color,
-                pinned=data.pinned,
+                pinned=data.pinned and not data.archived,
+                archived=data.archived,
                 position=self._top(session),
                 labels=self._label_rows(session, data.label_ids),
             )
@@ -270,18 +337,39 @@ class SqlNoteStore:
             row = session.exec(_NOTES_WITH_LABELS.where(NoteRow.id == note_id)).first()
             if row is None:
                 return None
-            if data.pinned != row.pinned:
+            pinned = data.pinned and not data.archived
+            if pinned != row.pinned:
                 row.position = self._top(session)
             row.title = data.title
             row.content = data.content
             row.color = data.color
-            row.pinned = data.pinned
+            row.pinned = pinned
+            row.archived = data.archived
             row.labels = self._label_rows(session, data.label_ids)
             row.updated_at = utcnow()
             session.add(row)
             session.commit()
             session.refresh(row)
             return row.to_note()
+
+    def _set_deleted(self, note_id: int, value: datetime | None) -> Note | None:
+        with Session(self._engine) as session:
+            row = session.exec(_NOTES_WITH_LABELS.where(NoteRow.id == note_id)).first()
+            if row is None:
+                return None
+            row.deleted_at = value
+            if value is not None:
+                row.pinned = False
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return row.to_note()
+
+    def trash(self, note_id: int) -> Note | None:
+        return self._set_deleted(note_id, utcnow())
+
+    def restore(self, note_id: int) -> Note | None:
+        return self._set_deleted(note_id, None)
 
     def delete(self, note_id: int) -> bool:
         with Session(self._engine) as session:
@@ -291,6 +379,14 @@ class SqlNoteStore:
             session.delete(row)
             session.commit()
             return True
+
+    def empty_trash(self) -> int:
+        with Session(self._engine) as session:
+            rows = session.exec(select(NoteRow).where(NoteRow.deleted_at.is_not(None))).all()  # type: ignore[union-attr]
+            for row in rows:
+                session.delete(row)
+            session.commit()
+            return len(rows)
 
     def reorder(self, ids: list[int]) -> list[Note] | None:
         with Session(self._engine) as session:
@@ -379,8 +475,18 @@ def make_engine(url: str) -> Engine:
     connect_args = {"prepare_threshold": None}
 
     if os.getenv("VERCEL"):
-        # Serverless: open a connection per request and let the pooler do the pooling.
-        return create_engine(url, connect_args=connect_args, poolclass=NullPool)
+        # Serverless: the process stays warm between invocations, so keep one
+        # connection open and reuse it. Opening a fresh TLS connection per request
+        # cost ~2s when the function and the database were in different regions.
+        return create_engine(
+            url,
+            connect_args=connect_args,
+            poolclass=QueuePool,
+            pool_size=1,
+            max_overflow=2,
+            pool_recycle=240,
+            pool_pre_ping=True,
+        )
     return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
 

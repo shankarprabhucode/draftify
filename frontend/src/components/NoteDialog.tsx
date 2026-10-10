@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toInput, type Note, type NoteInput } from '../api/notes'
+import { sectionOf, toInput, type Note, type NoteInput } from '../api/notes'
 import { useUpdateNote } from '../hooks/useNotes'
 import { colorStyles } from '../lib/colors'
 import { formatRelative } from '../lib/time'
@@ -10,7 +10,7 @@ import { LabelChips } from './LabelChips'
 import { LabelPicker } from './LabelPicker'
 import { Popover } from './Popover'
 import { SaveButton, type SaveState } from './SaveButton'
-import { CloseIcon, LabelIcon, PaletteIcon, PinIcon, TrashIcon } from './icons'
+import { ArchiveIcon, CloseIcon, DeleteForeverIcon, LabelIcon, PaletteIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon } from './icons'
 import { useLabels } from '../hooks/useLabels'
 
 const AUTOSAVE_MS = 600
@@ -18,12 +18,17 @@ const AUTOSAVE_MS = 600
 interface NoteDialogProps {
   note: Note
   onClose: () => void
+  onArchive: (note: Note, archived: boolean) => void
+  /** Trash (normal notes) or delete forever (trashed notes). */
   onDelete: (note: Note) => void
+  onRestore: (note: Note) => void
 }
 
 /** Full editor for an existing note. Changes autosave; Save flushes immediately. */
-export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
+export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: NoteDialogProps) {
   const update = useUpdateNote()
+  const section = sectionOf(note)
+  const readOnly = section === 'trash'
   const [draft, setDraft] = useState<NoteInput>(() => toInput(note))
   const [dirty, setDirty] = useState(false)
   const [menu, setMenu] = useState<'color' | 'label' | null>(null)
@@ -113,10 +118,16 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
         aria-label={draft.title || 'Untitled note'}
         className={`flex max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
       >
+        {readOnly && (
+          <p role="status" className="rounded-t-lg bg-black/6 px-6 py-2 text-center text-xs text-[#3c4043] sm:px-8 dark:bg-white/10 dark:text-[#e8eaed]">
+            This note is in the trash. Restore it to edit.
+          </p>
+        )}
         {/* Header: title + close */}
         <div className="flex items-start gap-3 px-6 pt-5 pb-1 sm:px-8">
           <input
             value={draft.title}
+            readOnly={readOnly}
             onChange={(e) => change({ title: e.target.value })}
             placeholder="Title"
             maxLength={200}
@@ -136,12 +147,13 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
             placeholder="Note… type '/' for blocks"
             minHeight="14rem"
             toolbar
+            editable={!readOnly}
           />
           {selectedLabels.length > 0 && (
             <div className="mt-4">
               <LabelChips
                 labels={selectedLabels}
-                onRemove={(l) => change({ label_ids: draft.label_ids.filter((id) => id !== l.id) }, true)}
+                onRemove={readOnly ? undefined : (l) => change({ label_ids: draft.label_ids.filter((id) => id !== l.id) }, true)}
               />
             </div>
           )}
@@ -149,6 +161,16 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
 
         {/* Footer */}
         <footer className="flex items-center justify-between gap-3 px-3 py-2 sm:px-5">
+          {readOnly ? (
+            <div className="flex items-center gap-0.5">
+              <IconButton label="Restore note" onClick={() => { onRestore(note); onClose() }}>
+                <RestoreIcon />
+              </IconButton>
+              <IconButton label="Delete forever" onClick={() => { onDelete(note); onClose() }}>
+                <DeleteForeverIcon />
+              </IconButton>
+            </div>
+          ) : (
           <div className="flex items-center gap-0.5">
             <div className="relative">
               <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
@@ -172,12 +194,24 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
                 <LabelPicker selectedIds={draft.label_ids} onChange={(label_ids) => change({ label_ids }, true)} />
               </Popover>
             </div>
+            {section === 'notes' && (
+              <IconButton
+                label={draft.pinned ? 'Unpin note' : 'Pin note'}
+                active={draft.pinned}
+                onClick={() => change({ pinned: !draft.pinned }, true)}
+              >
+                <PinIcon filled={draft.pinned} />
+              </IconButton>
+            )}
             <IconButton
-              label={draft.pinned ? 'Unpin note' : 'Pin note'}
-              active={draft.pinned}
-              onClick={() => change({ pinned: !draft.pinned }, true)}
+              label={section === 'archive' ? 'Unarchive note' : 'Archive note'}
+              onClick={() => {
+                dirtyRef.current = false
+                onArchive(note, section !== 'archive')
+                onClose()
+              }}
             >
-              <PinIcon filled={draft.pinned} />
+              {section === 'archive' ? <UnarchiveIcon /> : <ArchiveIcon />}
             </IconButton>
             <IconButton
               label="Delete note"
@@ -195,6 +229,7 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
               <kbd className="rounded border border-black/20 px-1 dark:border-white/30">Esc</kbd> close
             </span>
           </div>
+          )}
           <div className="flex items-center gap-3">
             <span
               role="status"
@@ -202,7 +237,7 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
             >
               {status}
             </span>
-            <SaveButton state={saveState} onClick={save} />
+            {!readOnly && <SaveButton state={saveState} onClick={save} />}
           </div>
         </footer>
       </div>

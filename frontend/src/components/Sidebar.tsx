@@ -1,6 +1,6 @@
 import { useLabels } from '../hooks/useLabels'
 import { useNotesUI } from '../hooks/useNotesUI'
-import { EditIcon, LabelIcon, NotesIcon } from './icons'
+import { ArchiveIcon, EditIcon, LabelIcon, NotesIcon, TrashIcon } from './icons'
 
 interface ItemProps {
   icon: React.ReactNode
@@ -33,7 +33,7 @@ function Item({ icon, label, active, collapsed, onClick }: ItemProps) {
 
 /** Keep-style navigation: Notes, then one entry per label, then Edit labels. */
 export function Sidebar() {
-  const { sidebarOpen, activeLabelId, setActiveLabelId, setLabelsDialogOpen } = useNotesUI()
+  const { sidebarOpen, section, setSection, activeLabelId, setActiveLabelId, setLabelsDialogOpen } = useNotesUI()
   const labels = useLabels()
   const collapsed = !sidebarOpen
 
@@ -48,9 +48,9 @@ export function Sidebar() {
         <Item
           icon={<NotesIcon />}
           label="Notes"
-          active={activeLabelId === null}
+          active={section === 'notes' && activeLabelId === null}
           collapsed={collapsed}
-          onClick={() => setActiveLabelId(null)}
+          onClick={() => setSection('notes')}
         />
       </ul>
       {!collapsed && (
@@ -76,6 +76,22 @@ export function Sidebar() {
           active={false}
           collapsed={collapsed}
           onClick={() => setLabelsDialogOpen(true)}
+        />
+      </ul>
+      <ul className="mt-2 space-y-0.5 border-t border-black/10 pt-2 dark:border-white/10">
+        <Item
+          icon={<ArchiveIcon className="h-5 w-5" />}
+          label="Archive"
+          active={section === 'archive'}
+          collapsed={collapsed}
+          onClick={() => setSection('archive')}
+        />
+        <Item
+          icon={<TrashIcon className="h-5 w-5" />}
+          label="Trash"
+          active={section === 'trash'}
+          collapsed={collapsed}
+          onClick={() => setSection('trash')}
         />
       </ul>
     </nav>
