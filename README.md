@@ -1,6 +1,6 @@
 # Draftify
 
-A notes app in the spirit of Google Keep with a Notion-style editor: a quick-capture bar, a masonry wall of colour-coded cards, pinning, search, and a rich-text editor with a formatting bubble and slash commands. Everything autosaves through a FastAPI API backed by Postgres (Supabase), with optimistic updates, undo on delete, loading and error states, and dark mode.
+A notes app modelled on Google Keep with a Notion-style editor: a sidebar with labels, a masonry wall of colour-coded cards with Keep's palette, pinning, labels, search, grid and list views, a floating "Take a note" button that opens a bottom-docked capture panel, and a rich-text editor with a formatting bubble and slash commands. Everything autosaves through a FastAPI API backed by Postgres (Supabase), with optimistic updates, undo on delete, loading and error states, and dark mode.
 
 ```
 backend/   FastAPI service, Postgres (Supabase) via SQLModel, in-memory fallback
@@ -52,7 +52,11 @@ Interactive API docs are at http://localhost:8000/docs.
 
 **Rich text with TipTap.** The editor is [TipTap](https://tiptap.dev) (ProseMirror underneath), chosen because it is headless, so the look is entirely ours, and it has first-class React bindings. `src/editor/` holds the wrapper, a bubble toolbar that appears over a selection (bold, italic, underline, strikethrough, highlight, code, links, headings, lists) and a slash-command extension built on TipTap's suggestion utility: typing `/` opens a menu of block types. Content is stored as HTML in the note's `content` field and sanitised with DOMPurify before being rendered in card previews, since it comes from the server. Search runs over the plain text of that HTML.
 
-**Keep-style interaction.** The "Take a note" bar expands into an editor and saves when it loses focus or is closed, so there is no form to submit. Opening a card shows the full editor in a dialog that autosaves after a short pause (and immediately for colour and pin changes), with a status line instead of a Save button. Delete hides the note and offers Undo in a toast for six seconds before the request is sent. Pinned notes sit in their own section; everything else is ordered by last edit.
+**Keep-style interaction.** A floating "Take a note" button (with a checklist shortcut beside it) opens a capture panel docked to the bottom of the screen; Save, Escape or clicking outside creates the note, so there is no form to submit. Opening a card shows the full editor in a dialog that autosaves after a short pause (and immediately for colour and pin changes), with a status line instead of a Save button. Delete hides the note and offers Undo in a toast for six seconds before the request is sent. Pinned notes sit in their own section; everything else is ordered by last edit.
+
+**Labels.** A `labels` table and a `note_labels` link table give notes a many-to-many label set. The sidebar lists every label as a filter, "Edit labels" manages them, and the card toolbar, capture panel and dialog each have a "Label note" picker with inline create. Names are unique case-insensitively (409 on clash); deleting a label detaches it from notes. The frontend resolves label ids to label objects from the labels cache when applying optimistic updates, so chips appear before the server replies.
+
+**Keep's visual language.** Keep's light and dark palettes are used verbatim (`src/lib/colors.ts`), cards carry their colour edge to edge with a hover toolbar (colour, label, delete) and a pin in the corner, and pinned notes sit under a PINNED heading above OTHERS. The wall is a CSS grid used as a masonry: each card measures itself with a ResizeObserver and spans the right number of fixed-height rows, which keeps drag-and-drop transforms predictable. A list view (single centred column) is one click away in the top bar.
 
 **Drag-and-drop ordering.** Cards can be dragged into any order with the mouse, by touch (press and hold), or from the keyboard (focus a card, Space to pick up, arrows to move, Space to drop), using [dnd-kit](https://dndkit.com). Each note has a `position`; the grid sorts pinned notes first and then by position, so editing a note no longer moves it. A drop sends one `POST /notes/reorder` with the full id order, applied optimistically with rollback. Dropping a note into the pinned group pins it, and pinning from the card or dialog puts the note at the top of its new group. Dragging is disabled while a search filter is active, because reordering a partial list would scramble the hidden notes. The layout is a CSS grid with top-aligned rows rather than a true masonry, since column-flow masonry and drag transforms do not mix.
 
@@ -77,6 +81,7 @@ Interactive API docs are at http://localhost:8000/docs.
 ## Stretch features
 
 - **Rich-text editor** with bubble toolbar, slash commands, checklists, code blocks, links and highlights.
+- **Labels** with sidebar filtering and inline creation; **grid/list view** toggle.
 - **Drag-and-drop reordering** with mouse, touch and keyboard, persisted per note.
 - **Colours, pinning, autosave, undo-delete, dark mode, keyboard shortcuts** (⌘K search, ⌘S save, Esc to close, `/` for blocks).
 - **Search**: filters by title or the plain text of the content, case-insensitive, with an empty state for no matches.

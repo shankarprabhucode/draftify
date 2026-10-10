@@ -1,29 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
-import { emptyNoteInput, type NoteInput } from '../api/notes'
+import { emptyNoteInput, type Label, type NoteInput } from '../api/notes'
 import { useCreateNote } from '../hooks/useNotes'
+import { useLabels } from '../hooks/useLabels'
 import { colorStyles } from '../lib/colors'
 import { isBlank } from '../lib/html'
 import { RichTextEditor } from '../editor/RichTextEditor'
 import { ColorPicker } from './ColorPicker'
-import { IconButton, PaletteIcon, PencilIcon, PinIcon } from './IconButton'
+import { IconButton } from './IconButton'
+import { LabelChips } from './LabelChips'
+import { LabelPicker } from './LabelPicker'
+import { Popover } from './Popover'
 import { SaveButton, Spinner } from './SaveButton'
+import { CheckSquareIcon, LabelIcon, PaletteIcon, PinIcon, PlusIcon } from './icons'
+
+const CHECKLIST_SEED =
+  '<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><div><p></p></div></li></ul>'
 
 /**
- * Keep-style capture box. Collapsed it is a single line; clicking expands it
- * into a title field and rich editor. Closing saves the note if it has content.
+ * Note capture. Closed, it is a floating "Take a note" button (plus a checklist
+ * shortcut) fixed to the bottom-right. Open, it is a panel docked to the bottom
+ * of the screen with a title field and rich editor. Save, Escape or clicking
+ * outside creates the note if there is anything to save.
  */
 export function QuickCapture() {
   const create = useCreateNote()
+  const labels = useLabels()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<NoteInput>(emptyNoteInput)
-  const [showColors, setShowColors] = useState(false)
+  const [menu, setMenu] = useState<'color' | 'label' | null>(null)
   const box = useRef<HTMLDivElement>(null)
 
   const hasContent = draft.title.trim().length > 0 || !isBlank(draft.content)
+  const selectedLabels: Label[] = (labels.data ?? []).filter((l) => draft.label_ids.includes(l.id))
 
   const reset = () => {
     setDraft(emptyNoteInput)
-    setShowColors(false)
+    setMenu(null)
     setOpen(false)
   }
 
@@ -33,13 +45,18 @@ export function QuickCapture() {
     reset()
   }
 
+  const openWith = (content = '') => {
+    setDraft({ ...emptyNoteInput, content })
+    setOpen(true)
+  }
+
   // Click outside closes (and saves) the capture box.
   useEffect(() => {
     if (!open) return
     const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node
+      const target = e.target as Element
       if (box.current?.contains(target)) return
-      if ((target as Element).closest?.('.slash-menu')) return
+      if (target.closest?.('.slash-menu')) return
       close()
     }
     document.addEventListener('pointerdown', onPointerDown)
@@ -48,54 +65,86 @@ export function QuickCapture() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-slate-500 shadow-card transition hover:shadow-card-hover dark:border-slate-700 dark:bg-slate-900"
-      >
-        <span className="flex items-center gap-3">
-          <PencilIcon />
-          Take a note…
-        </span>
-        {create.isPending && (
-          <span className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400" aria-live="polite">
-            <Spinner /> Saving…
-          </span>
-        )}
-      </button>
+      <div className="fixed right-5 bottom-5 z-40 flex items-center gap-3 sm:right-8 sm:bottom-8">
+        <button
+          type="button"
+          onClick={() => openWith(CHECKLIST_SEED)}
+          aria-label="New list"
+          title="New list"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-[#5f6368] shadow-keep transition hover:bg-[#f1f3f4] dark:border-white/10 dark:bg-[#2d2e30] dark:text-[#e8eaed] dark:hover:bg-[#3c4043]"
+        >
+          <CheckSquareIcon />
+        </button>
+        <button
+          type="button"
+          onClick={() => openWith()}
+          className="flex h-14 items-center gap-2 rounded-full bg-[#202124] pr-6 pl-5 text-[15px] font-medium text-white shadow-fab transition hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white"
+        >
+          {create.isPending ? <Spinner className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
+          <span aria-live="polite">{create.isPending ? 'Saving…' : 'Take a note'}</span>
+        </button>
+      </div>
     )
   }
 
   return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-3 sm:px-6 sm:pb-6">
     <div
       ref={box}
-      className={`mx-auto w-full max-w-xl animate-rise rounded-2xl border p-4 shadow-card-hover ${colorStyles[draft.color].surface}`}
-      onKeyDown={(e) => e.key === 'Escape' && close()}
+      className={`pointer-events-auto w-full max-w-xl animate-slide-up rounded-lg border shadow-fab ${colorStyles[draft.color].surface}`}
+      onKeyDown={(e) => e.key === 'Escape' && !menu && close()}
     >
-      <input
-        autoFocus
-        value={draft.title}
-        onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-        placeholder="Title"
-        maxLength={200}
-        aria-label="Title"
-        className="mb-2 w-full bg-transparent text-lg font-semibold outline-none placeholder:text-slate-400"
-      />
-      <RichTextEditor
-        content={draft.content}
-        onChange={(content) => setDraft((d) => ({ ...d, content }))}
-        minHeight="4rem"
-      />
-      {showColors && (
-        <div className="mt-3">
-          <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
-        </div>
-      )}
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <IconButton label="Change colour" active={showColors} onClick={() => setShowColors((s) => !s)}>
-            <PaletteIcon />
-          </IconButton>
+      <div className="px-4 pt-3">
+        <input
+          autoFocus
+          value={draft.title}
+          onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+          placeholder="Title"
+          maxLength={200}
+          aria-label="Title"
+          className="mb-1 w-full bg-transparent text-base font-medium outline-none placeholder:text-[#5f6368]"
+        />
+        <RichTextEditor
+          content={draft.content}
+          onChange={(content) => setDraft((d) => ({ ...d, content }))}
+          placeholder="Take a note…"
+          minHeight="4rem"
+          autofocus={draft.content.length > 0}
+          className="max-h-[45vh] overflow-y-auto"
+        />
+        {selectedLabels.length > 0 && (
+          <div className="mt-2">
+            <LabelChips
+              labels={selectedLabels}
+              onRemove={(l) => setDraft((d) => ({ ...d, label_ids: d.label_ids.filter((id) => id !== l.id) }))}
+            />
+          </div>
+        )}
+      </div>
+      <div className="mt-1 flex items-center justify-between px-2 pb-1.5">
+        <div className="flex items-center gap-0.5">
+          <div className="relative">
+            <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
+              <PaletteIcon />
+            </IconButton>
+            <Popover open={menu === 'color'} onClose={() => setMenu(null)} side="top">
+              <ColorPicker
+                value={draft.color}
+                onChange={(color) => {
+                  setDraft((d) => ({ ...d, color }))
+                  setMenu(null)
+                }}
+              />
+            </Popover>
+          </div>
+          <div className="relative">
+            <IconButton label="Label note" active={menu === 'label'} onClick={() => setMenu(menu === 'label' ? null : 'label')}>
+              <LabelIcon className="h-4 w-4" />
+            </IconButton>
+            <Popover open={menu === 'label'} onClose={() => setMenu(null)} side="top">
+              <LabelPicker selectedIds={draft.label_ids} onChange={(label_ids) => setDraft((d) => ({ ...d, label_ids }))} />
+            </Popover>
+          </div>
           <IconButton
             label={draft.pinned ? 'Unpin' : 'Pin'}
             active={draft.pinned}
@@ -104,17 +153,18 @@ export function QuickCapture() {
             <PinIcon filled={draft.pinned} />
           </IconButton>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={reset}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-900/10 dark:text-slate-300 dark:hover:bg-white/10"
+            className="rounded px-3 py-1.5 text-sm font-medium text-[#3c4043] hover:bg-black/6 dark:text-[#e8eaed] dark:hover:bg-white/10"
           >
             Discard
           </button>
           <SaveButton state={hasContent ? 'dirty' : 'empty'} onClick={close} />
         </div>
       </div>
+    </div>
     </div>
   )
 }

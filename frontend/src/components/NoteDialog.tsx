@@ -5,8 +5,13 @@ import { colorStyles } from '../lib/colors'
 import { formatRelative } from '../lib/time'
 import { RichTextEditor } from '../editor/RichTextEditor'
 import { ColorPicker } from './ColorPicker'
-import { IconButton, PaletteIcon, PinIcon, TrashIcon } from './IconButton'
+import { IconButton } from './IconButton'
+import { LabelChips } from './LabelChips'
+import { LabelPicker } from './LabelPicker'
+import { Popover } from './Popover'
 import { SaveButton, type SaveState } from './SaveButton'
+import { CloseIcon, LabelIcon, PaletteIcon, PinIcon, TrashIcon } from './icons'
+import { useLabels } from '../hooks/useLabels'
 
 const AUTOSAVE_MS = 600
 
@@ -16,18 +21,14 @@ interface NoteDialogProps {
   onDelete: (note: Note) => void
 }
 
-const CloseIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    <path d="M6 6l12 12M18 6 6 18" />
-  </svg>
-)
-
 /** Full editor for an existing note. Changes autosave; Save flushes immediately. */
 export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
   const update = useUpdateNote()
   const [draft, setDraft] = useState<NoteInput>(() => toInput(note))
   const [dirty, setDirty] = useState(false)
-  const [showColors, setShowColors] = useState(false)
+  const [menu, setMenu] = useState<'color' | 'label' | null>(null)
+  const labels = useLabels()
+  const selectedLabels = (labels.data ?? []).filter((l) => draft.label_ids.includes(l.id))
   // Mirrors of draft/dirty for the save callback, written only from event handlers.
   const draftRef = useRef(draft)
   const dirtyRef = useRef(false)
@@ -84,7 +85,7 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showColors) setShowColors(false)
+        if (menu) setMenu(null)
         else onClose()
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
@@ -94,7 +95,7 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, showColors])
+  }, [onClose, menu])
 
   const saveState: SaveState = update.isPending ? 'saving' : dirty ? 'dirty' : 'saved'
   const status = update.isError
@@ -103,24 +104,24 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={draft.title || 'Untitled note'}
-        className={`flex max-h-[92vh] w-full max-w-3xl animate-rise flex-col overflow-hidden rounded-3xl border shadow-2xl ${colorStyles[draft.color].surface}`}
+        className={`flex max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
       >
         {/* Header: title + close */}
         <div className="flex items-start gap-3 px-6 pt-5 pb-1 sm:px-8">
           <input
             value={draft.title}
             onChange={(e) => change({ title: e.target.value })}
-            placeholder="Untitled"
+            placeholder="Title"
             maxLength={200}
             aria-label="Title"
-            className="min-w-0 flex-1 bg-transparent text-[26px] leading-tight font-bold tracking-tight outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+            className="min-w-0 flex-1 bg-transparent text-[22px] leading-tight font-medium outline-none placeholder:text-[#80868b]"
           />
           <IconButton label="Close" onClick={onClose} className="-mr-2 shrink-0">
             <CloseIcon />
@@ -128,33 +129,49 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
         </div>
 
         {/* Body: toolbar + scrolling editor */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6 sm:px-8">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-4 sm:px-8">
           <RichTextEditor
             content={draft.content}
             onChange={(content) => change({ content })}
-            placeholder="Write something… type '/' for blocks"
-            minHeight="16rem"
+            placeholder="Note… type '/' for blocks"
+            minHeight="14rem"
             toolbar
           />
+          {selectedLabels.length > 0 && (
+            <div className="mt-4">
+              <LabelChips
+                labels={selectedLabels}
+                onRemove={(l) => change({ label_ids: draft.label_ids.filter((id) => id !== l.id) }, true)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <footer className="flex items-center justify-between gap-3 border-t border-slate-900/8 px-4 py-2.5 sm:px-6 dark:border-white/10">
-          <div className="relative flex items-center gap-0.5">
-            <IconButton label="Change colour" active={showColors} onClick={() => setShowColors((s) => !s)}>
-              <PaletteIcon />
-            </IconButton>
-            {showColors && (
-              <div className="absolute bottom-11 left-0 z-10 animate-rise rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
+        <footer className="flex items-center justify-between gap-3 px-3 py-2 sm:px-5">
+          <div className="flex items-center gap-0.5">
+            <div className="relative">
+              <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
+                <PaletteIcon />
+              </IconButton>
+              <Popover open={menu === 'color'} onClose={() => setMenu(null)} side="top">
                 <ColorPicker
                   value={draft.color}
                   onChange={(color) => {
                     change({ color }, true)
-                    setShowColors(false)
+                    setMenu(null)
                   }}
                 />
-              </div>
-            )}
+              </Popover>
+            </div>
+            <div className="relative">
+              <IconButton label="Label note" active={menu === 'label'} onClick={() => setMenu(menu === 'label' ? null : 'label')}>
+                <LabelIcon className="h-4 w-4" />
+              </IconButton>
+              <Popover open={menu === 'label'} onClose={() => setMenu(null)} side="top">
+                <LabelPicker selectedIds={draft.label_ids} onChange={(label_ids) => change({ label_ids }, true)} />
+              </Popover>
+            </div>
             <IconButton
               label={draft.pinned ? 'Unpin note' : 'Pin note'}
               active={draft.pinned}
@@ -172,16 +189,16 @@ export function NoteDialog({ note, onClose, onDelete }: NoteDialogProps) {
             >
               <TrashIcon />
             </IconButton>
-            <span className="ml-2 hidden text-[11px] text-slate-400 md:inline">
-              <kbd className="rounded border border-slate-300 px-1 dark:border-slate-600">/</kbd> blocks ·{' '}
-              <kbd className="rounded border border-slate-300 px-1 dark:border-slate-600">⌘S</kbd> save ·{' '}
-              <kbd className="rounded border border-slate-300 px-1 dark:border-slate-600">Esc</kbd> close
+            <span className="ml-2 hidden text-[11px] text-[#5f6368] md:inline dark:text-[#9aa0a6]">
+              <kbd className="rounded border border-black/20 px-1 dark:border-white/30">/</kbd> blocks ·{' '}
+              <kbd className="rounded border border-black/20 px-1 dark:border-white/30">⌘S</kbd> save ·{' '}
+              <kbd className="rounded border border-black/20 px-1 dark:border-white/30">Esc</kbd> close
             </span>
           </div>
           <div className="flex items-center gap-3">
             <span
               role="status"
-              className={`hidden text-xs sm:inline ${update.isError ? 'text-red-600' : 'text-slate-400'}`}
+              className={`hidden text-xs sm:inline ${update.isError ? 'text-red-600' : 'text-[#5f6368] dark:text-[#9aa0a6]'}`}
             >
               {status}
             </span>

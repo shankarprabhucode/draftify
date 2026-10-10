@@ -7,13 +7,19 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-white text-[#202124] antialiased dark:bg-[#202124] dark:text-[#e8eaed];
 }
+
+/* Keep's resting/hover card shadow */
+.shadow-keep {
+  box-shadow: 0 1px 2px 0 rgb(60 64 67 / 0.3), 0 1px 3px 1px rgb(60 64 67 / 0.15);
+}
+.dark .shadow-keep, @media (prefers-color-scheme: dark) { .shadow-keep { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.6), 0 2px 6px 2px rgb(0 0 0 / 0.3); } }
 
 /* ---------- Rich text: shared by the editor and card previews ---------- */
 
 .rich-text {
-  @apply text-[15.5px] leading-7 text-slate-800 dark:text-slate-200;
+  @apply text-[15.5px] leading-7 text-[#202124] dark:text-[#e8eaed];
 }
 .rich-text > * + * { @apply mt-2; }
 .rich-text h1 { @apply mt-4 text-2xl font-bold leading-tight; }
@@ -48,7 +54,7 @@ body {
 }
 
 /* Card previews: slightly smaller and clamped */
-.note-preview { @apply text-[13.5px] leading-normal; }
+.note-preview { @apply text-[14px] leading-normal; }
 .note-preview > * + * { @apply mt-1.5; }
 .note-preview h1 { @apply text-lg; }
 .note-preview h2 { @apply text-base; }
@@ -60,8 +66,15 @@ body {
   @apply w-72 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-slate-600 dark:bg-slate-800;
 }
 
-/* Note grid: as many ~15rem columns as fit; rows align to the top so cards keep their height */
-.notes-grid { @apply grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-3; }
+/* Notes wall: masonry on a CSS grid (row spans are set per card from measured height) */
+.notes-masonry { @apply grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]; }
+/* Keep's list view: one centred column */
+.notes-list { @apply mx-auto grid max-w-2xl grid-cols-1; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .animate-rise { animation: rise 160ms ease-out; }
+@keyframes slide-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.animate-slide-up { animation: slide-up 200ms cubic-bezier(0.2, 0, 0, 1); }
+
+/* Floating button / docked panel shadow */
+.shadow-fab { box-shadow: 0 4px 12px rgb(0 0 0 / 0.2), 0 1px 3px rgb(0 0 0 / 0.15); }

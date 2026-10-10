@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import type { Note } from '../api/notes'
 import { NoteCard } from './NoteCard'
@@ -12,44 +13,52 @@ const note: Note = {
   pinned: false,
   position: 0,
   updated_at: new Date().toISOString(),
+  labels: [{ id: 7, name: 'Home' }],
 }
 
-const handlers = () => ({ onOpen: vi.fn(), onTogglePin: vi.fn(), onDelete: vi.fn() })
+const handlers = () => ({ onOpen: vi.fn(), onPatch: vi.fn(), onDelete: vi.fn(), onLabelClick: vi.fn() })
+
+const renderCard = (ui: React.ReactElement) =>
+  render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>)
 
 describe('NoteCard', () => {
-  it('renders the title and rich content', () => {
-    render(<NoteCard note={note} {...handlers()} />)
+  it('renders the title, rich content and labels', () => {
+    renderCard(<NoteCard note={note} {...handlers()} />)
     expect(screen.getByRole('heading', { name: 'Grocery list' })).toBeInTheDocument()
     expect(screen.getByText('milk').tagName).toBe('STRONG')
-    expect(screen.getByText('just now')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument()
   })
 
   it('sanitises content from the server', () => {
     const hostile = { ...note, content: '<p>safe</p><img src=x onerror="alert(1)"><script>alert(1)</script>' }
-    const { container } = render(<NoteCard note={hostile} {...handlers()} />)
+    const { container } = renderCard(<NoteCard note={hostile} {...handlers()} />)
     expect(container.querySelector('script')).toBeNull()
     expect(container.querySelector('img')?.getAttribute('onerror')).toBeNull()
     expect(screen.getByText('safe')).toBeInTheDocument()
   })
 
-  it('opens, pins and deletes through its callbacks', async () => {
+  it('opens, pins, labels and deletes through its callbacks', async () => {
     const user = userEvent.setup()
     const h = handlers()
-    render(<NoteCard note={note} {...h} />)
+    renderCard(<NoteCard note={note} {...h} />)
 
     await user.click(screen.getByRole('button', { name: /open note/i }))
     expect(h.onOpen).toHaveBeenCalledWith(note)
 
     await user.click(screen.getByRole('button', { name: 'Pin note' }))
-    expect(h.onTogglePin).toHaveBeenCalledWith(note)
+    expect(h.onPatch).toHaveBeenCalledWith(note, { pinned: true })
+
+    await user.click(screen.getByRole('button', { name: 'Home' }))
+    expect(h.onLabelClick).toHaveBeenCalledWith(note.labels[0])
 
     await user.click(screen.getByRole('button', { name: 'Delete note' }))
     expect(h.onDelete).toHaveBeenCalledWith(note)
   })
 
-  it('shows a placeholder for an empty untitled note and disables actions while creating', () => {
-    render(<NoteCard note={{ ...note, id: -1, title: '', content: '' }} {...handlers()} />)
+  it('shows a placeholder for an empty untitled note and a saving state while creating', () => {
+    renderCard(<NoteCard note={{ ...note, id: -1, title: '', content: '', labels: [] }} {...handlers()} />)
     expect(screen.getByText('Empty note')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete note' })).toBeDisabled()
+    expect(screen.getByText('Saving…')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete note' })).toBeNull()
   })
 })

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { notesApi, toInput, type Note, type NoteInput } from '../api/notes'
+import { notesApi, toInput, type Label, type Note, type NoteInput } from '../api/notes'
 import { topPosition } from '../lib/order'
+import { labelsKey, notesKey } from './keys'
 
-export const notesKey = ['notes'] as const
+export { notesKey } from './keys'
 
 export function useNotes() {
   return useQuery({ queryKey: notesKey, queryFn: notesApi.list })
@@ -24,11 +25,18 @@ function useOptimisticNotes() {
   const patch = (updater: (notes: Note[]) => Note[]) =>
     queryClient.setQueryData<Note[]>(notesKey, (old = []) => updater(old))
 
-  return { snapshot, rollback, settle, patch }
+  /** Turn an input (label ids) into note fields (label objects) using the labels cache. */
+  const fields = (input: NoteInput): Omit<Note, 'id' | 'position' | 'updated_at'> => {
+    const all = queryClient.getQueryData<Label[]>(labelsKey) ?? []
+    const { label_ids, ...rest } = input
+    return { ...rest, labels: all.filter((l) => label_ids.includes(l.id)) }
+  }
+
+  return { snapshot, rollback, settle, patch, fields }
 }
 
 export function useCreateNote() {
-  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  const { snapshot, rollback, settle, patch, fields } = useOptimisticNotes()
   return useMutation({
     mutationFn: notesApi.create,
     onMutate: async (input: NoteInput) => {
@@ -36,7 +44,7 @@ export function useCreateNote() {
       // Negative temporary id so it can't collide with server ids.
       patch((notes) => [
         ...notes,
-        { id: -Date.now(), position: topPosition(notes), updated_at: new Date().toISOString(), ...input },
+        { id: -Date.now(), position: topPosition(notes), updated_at: new Date().toISOString(), ...fields(input) },
       ])
       return { previous }
     },
@@ -46,7 +54,7 @@ export function useCreateNote() {
 }
 
 export function useUpdateNote() {
-  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  const { snapshot, rollback, settle, patch, fields } = useOptimisticNotes()
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: NoteInput }) => notesApi.update(id, input),
     onMutate: async ({ id, input }) => {
@@ -56,7 +64,7 @@ export function useUpdateNote() {
           if (n.id !== id) return n
           // Pinning or unpinning moves the note to the top of its new group.
           const position = input.pinned !== n.pinned ? topPosition(notes) : n.position
-          return { ...n, ...input, position, updated_at: new Date().toISOString() }
+          return { ...n, ...fields(input), position, updated_at: new Date().toISOString() }
         }),
       )
       return { previous }

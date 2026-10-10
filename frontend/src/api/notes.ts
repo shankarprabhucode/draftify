@@ -5,6 +5,11 @@ export const NOTE_COLORS = [
 ] as const
 export type NoteColor = (typeof NOTE_COLORS)[number]
 
+export interface Label {
+  id: number
+  name: string
+}
+
 export interface Note {
   id: number
   title: string
@@ -14,17 +19,31 @@ export interface Note {
   /** Manual order within the pinned/unpinned group; lower comes first. */
   position: number
   updated_at: string // ISO 8601
+  labels: Label[]
 }
 
-export type NoteInput = Pick<Note, 'title' | 'content' | 'color' | 'pinned'>
+export interface NoteInput {
+  title: string
+  content: string
+  color: NoteColor
+  pinned: boolean
+  label_ids: number[]
+}
 
-export const emptyNoteInput: NoteInput = { title: '', content: '', color: 'default', pinned: false }
+export const emptyNoteInput: NoteInput = {
+  title: '',
+  content: '',
+  color: 'default',
+  pinned: false,
+  label_ids: [],
+}
 
 export const toInput = (note: Note): NoteInput => ({
   title: note.title,
   content: note.content,
   color: note.color,
   pinned: note.pinned,
+  label_ids: note.labels.map((l) => l.id),
 })
 
 export const notesApi = {
@@ -37,4 +56,13 @@ export const notesApi = {
   /** Persist a full display order. Returns every note in the new order. */
   reorder: (ids: number[]) =>
     request<Note[]>('/notes/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
+}
+
+export const labelsApi = {
+  list: () => request<Label[]>('/labels'),
+  create: (name: string) =>
+    request<Label>('/labels', { method: 'POST', body: JSON.stringify({ name }) }),
+  rename: (id: number, name: string) =>
+    request<Label>(`/labels/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  remove: (id: number) => request<void>(`/labels/${id}`, { method: 'DELETE' }),
 }

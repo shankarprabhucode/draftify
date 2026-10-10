@@ -13,9 +13,10 @@ from typing import Annotated
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from models import Note, NoteIn, ReorderIn
-from store import NoteStore, create_store
+from models import Label, LabelIn, Note, NoteIn, ReorderIn
+from store import DuplicateLabel, NoteStore, UnknownLabel, create_store
 
 load_dotenv()
 
@@ -56,6 +57,46 @@ def _not_found(note_id: int) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND, detail=f"Note {note_id} not found"
     )
+
+
+@app.exception_handler(UnknownLabel)
+async def _unknown_label(_: Request, exc: UnknownLabel):
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": str(exc)})
+
+
+@app.exception_handler(DuplicateLabel)
+async def _duplicate_label(_: Request, exc: DuplicateLabel):
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exc)})
+
+
+# ---------------------------------------------------------------- labels
+
+
+@app.get("/labels", response_model=list[Label])
+def list_labels(store: Store) -> list[Label]:
+    return store.list_labels()
+
+
+@app.post("/labels", response_model=Label, status_code=status.HTTP_201_CREATED)
+def create_label(data: LabelIn, store: Store) -> Label:
+    return store.create_label(data)
+
+
+@app.put("/labels/{label_id}", response_model=Label)
+def rename_label(label_id: int, data: LabelIn, store: Store) -> Label:
+    label = store.rename_label(label_id, data)
+    if label is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Label {label_id} not found")
+    return label
+
+
+@app.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_label(label_id: int, store: Store) -> None:
+    if not store.delete_label(label_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Label {label_id} not found")
+
+
+# ---------------------------------------------------------------- notes
 
 
 @app.get("/notes", response_model=list[Note])
