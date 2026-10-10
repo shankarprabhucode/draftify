@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sectionOf, toInput, type Note, type NoteInput } from '../api/notes'
 import { useUpdateNote } from '../hooks/useNotes'
-import { colorStyles } from '../lib/colors'
 import { formatRelative } from '../lib/time'
 import { RichTextEditor } from '../editor/RichTextEditor'
+import { ColorButton } from './ColorButton'
 import { ColorPicker } from './ColorPicker'
 import { IconButton } from './IconButton'
 import { LabelChips } from './LabelChips'
 import { LabelPicker } from './LabelPicker'
 import { Popover } from './Popover'
 import { SaveButton, type SaveState } from './SaveButton'
-import { ArchiveIcon, CloseIcon, DeleteForeverIcon, LabelIcon, PaletteIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon } from './icons'
+import { ArchiveIcon, CloseIcon, DeleteForeverIcon, LabelIcon, PinIcon, RestoreIcon, TrashIcon, UnarchiveIcon } from './icons'
 import { useLabels } from '../hooks/useLabels'
 
 const AUTOSAVE_MS = 600
@@ -116,7 +116,7 @@ export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: No
         role="dialog"
         aria-modal="true"
         aria-label={draft.title || 'Untitled note'}
-        className={`flex max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
+        className={`flex max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border border-[#e0e0e0] bg-white shadow-2xl dark:border-[#5f6368] dark:bg-[#202124]`}
       >
         {readOnly && (
           <p role="status" className="rounded-t-lg bg-black/6 px-6 py-2 text-center text-xs text-[#3c4043] sm:px-8 dark:bg-white/10 dark:text-[#e8eaed]">
@@ -173,9 +173,7 @@ export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: No
           ) : (
           <div className="flex items-center gap-0.5">
             <div className="relative">
-              <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
-                <PaletteIcon />
-              </IconButton>
+              <ColorButton color={draft.color} active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')} />
               <Popover open={menu === 'color'} onClose={() => setMenu(null)} side="top">
                 <ColorPicker
                   value={draft.color}
