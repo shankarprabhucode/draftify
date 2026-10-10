@@ -20,6 +20,7 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import Depends, HTTPException, Request, Response, status
 
 from models import User, utcnow
+from store import ensure_store
 
 COOKIE_NAME = "draftify_session"
 SESSION_TTL = timedelta(days=7)
@@ -93,7 +94,7 @@ def current_user(request: Request) -> User:
     user_id = read_token(token) if token else None
     if user_id is None:
         raise unauthorized()
-    user = request.app.state.store.get_user(user_id)
+    user = ensure_store(request.app).get_user(user_id)
     if user is None:
         raise unauthorized()
     return user

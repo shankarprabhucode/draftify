@@ -128,3 +128,19 @@ def test_unhandled_errors_return_json_with_an_id(store, monkeypatch):
         r = client.get("/notes")
     assert r.status_code == 500
     assert r.json()["detail"].startswith("Something went wrong on the server (error ")
+
+
+def test_cold_start_with_cookie_initialises_the_store(store, monkeypatch):
+    """Vercel skips lifespan: the very first request may carry a session cookie,
+    and the auth check must build the store itself rather than assume it exists."""
+    import store as store_module
+
+    monkeypatch.setattr(store_module, "create_store", lambda url: store)
+    # No `with`: lifespan does not run, like on Vercel.
+    client = TestClient(app)
+    app.state.store = store
+    client.post("/auth/signup", json=ALICE)
+    del app.state.store  # simulate a fresh function instance
+    assert client.get("/auth/me").status_code == 200
+    del app.state.store
+    assert client.get("/notes").status_code == 200

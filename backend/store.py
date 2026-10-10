@@ -643,3 +643,22 @@ def create_store(database_url: str | None) -> NoteStore:
     if database_url:
         return SqlNoteStore(make_engine(database_url))
     return InMemoryNoteStore()
+
+
+_init_lock = Lock()
+
+
+def ensure_store(app) -> NoteStore:
+    """Return the app's store, creating it on first use.
+
+    Lifespan normally does this at startup, but some serverless hosts (Vercel)
+    skip lifespan events, so every code path that needs the store goes through
+    here. The lock keeps two concurrent first requests from building two stores.
+    """
+    store = getattr(app.state, "store", None)
+    if store is None:
+        with _init_lock:
+            store = getattr(app.state, "store", None)
+            if store is None:
+                store = app.state.store = create_store(os.getenv("DATABASE_URL"))
+    return store

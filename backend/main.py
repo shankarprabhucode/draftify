@@ -23,25 +23,16 @@ from auth import (
     set_session_cookie, verify_password,
 )
 from models import Credentials, Label, LabelIn, Note, NoteIn, ReorderIn, User
-from store import DuplicateEmail, DuplicateLabel, NoteStore, UnknownLabel, create_store
+from store import DuplicateEmail, DuplicateLabel, NoteStore, UnknownLabel, ensure_store
 
 load_dotenv()
 log = logging.getLogger("draftify")
 
 
-def _ensure_store(app: FastAPI) -> NoteStore:
-    """Create the store on first use. Lifespan normally does this at startup, but
-    some serverless hosts skip lifespan events, so the dependency can do it too."""
-    store = getattr(app.state, "store", None)
-    if store is None:
-        store = app.state.store = create_store(os.getenv("DATABASE_URL"))
-    return store
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     secret_key()  # fail fast in production if SECRET_KEY is missing
-    _ensure_store(app)
+    ensure_store(app)
     yield
 
 
@@ -57,7 +48,7 @@ app.add_middleware(
 
 
 def get_store(request: Request) -> Iterator[NoteStore]:
-    yield _ensure_store(request.app)
+    yield ensure_store(request.app)
 
 
 Store = Annotated[NoteStore, Depends(get_store)]
