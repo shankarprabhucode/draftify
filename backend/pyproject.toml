@@ -1,7 +1,7 @@
 [project]
-name = "notes-backend"
+name = "draftify-backend"
 version = "0.1.0"
-description = "FastAPI backend for the Notes Dashboard"
+description = "FastAPI backend for Draftify"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

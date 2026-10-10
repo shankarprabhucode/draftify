@@ -54,8 +54,9 @@ export function NotesDashboard() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Notes
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-base text-white">D</span>
+          Draftify
           {notesQuery.isSuccess && (
             <span className="ml-2 text-sm font-normal text-slate-500">
               {visible.length}

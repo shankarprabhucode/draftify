@@ -1,6 +1,6 @@
-"""Notes API.
+"""Draftify API.
 
-A small FastAPI service backing the Notes Dashboard. Storage is chosen at
+A small FastAPI service backing Draftify. Storage is chosen at
 startup: set ``DATABASE_URL`` (for example a Supabase Postgres connection
 string) to persist notes, or leave it unset to use an in-memory store.
 """
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Notes API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Draftify API", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

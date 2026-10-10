@@ -1,4 +1,4 @@
-"""Vercel entry point.
+"""Vercel entry point for the Draftify API.
 
 Vercel turns every file under ``api/`` into a serverless function. ``vercel.json``
 rewrites ``/api/*`` here, and the FastAPI app is mounted under ``/api`` so the

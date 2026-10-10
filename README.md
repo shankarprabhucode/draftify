@@ -1,4 +1,4 @@
-# Notes Dashboard
+# Draftify
 
 A notes app in the spirit of Google Keep with a Notion-style editor: a quick-capture bar, a masonry wall of colour-coded cards, pinning, search, and a rich-text editor with a formatting bubble and slash commands. Everything autosaves through a FastAPI API backed by Postgres (Supabase), with optimistic updates, undo on delete, loading and error states, and dark mode.
 
