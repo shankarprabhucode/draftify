@@ -1,11 +1,33 @@
 # Draftify
 
+**Live:** https://draftify-gamma.vercel.app · **App:** https://draftify-gamma.vercel.app/app · **API docs:** https://draftify-gamma.vercel.app/api/docs · **Walkthrough:** [one-minute video](https://draftify-gamma.vercel.app/walkthrough.webm)
+
+Demo account credentials are available on request. Submitted for the Karbon Digital AI Engineering Lead assessment.
+
 A notes app modelled on Google Keep with a Notion-style editor: a sidebar with labels, a masonry wall of colour-coded cards with Keep's palette, pinning, labels, search, grid and list views, a floating "Take a note" button that opens a capture modal, and a rich-text editor with a formatting bubble and slash commands. Everything autosaves through a FastAPI API backed by Postgres (Supabase), with optimistic updates, undo on delete, loading and error states, and dark mode.
 
 ```
 backend/   FastAPI service, Postgres (Supabase) via SQLModel, in-memory fallback
 frontend/  Vite + React 19 + TypeScript
 ```
+
+## How this maps to the brief
+
+| Requirement | Where |
+| --- | --- |
+| Notes with id, title, content; card/grid layout | `frontend/src/components/NotesGrid.tsx`, `NoteCard.tsx` (masonry grid, Keep colours) |
+| Add, edit (modal), delete | Floating "Take a note" → `QuickCapture.tsx`; `NoteDialog.tsx` with autosave; delete = trash with Undo |
+| All CRUD through an API | `backend/main.py` (FastAPI); the client never mutates local state without a request |
+| FastAPI backend (starter extended) | Server-assigned ids, proper status codes, validation, CORS, migrations, auth |
+| Hooks only, no class components | Everywhere; see `frontend/src/hooks/` |
+| Context or state library | TanStack Query for server state (`hooks/useNotes.ts`), Context for UI state (`context/`) |
+| Error handling and loading states | `api/client.ts` → `ApiError`; skeleton grid, retry banner, per-mutation rollback, toasts |
+| Styling | Tailwind v4, Keep's palette, dark mode, responsive |
+| **Stretch:** search / filter | Top-bar search over title, text and labels; sidebar label filters |
+| **Stretch:** optimistic UI | Create, update, pin, reorder, archive, trash, restore all optimistic with rollback |
+| **Stretch:** tests | 46 backend cases (both stores) + 17 frontend cases (Vitest + Testing Library) |
+| **Stretch:** React Native | See "Adapting to React Native" below |
+| Beyond the brief | Rich-text editor with slash commands, labels, drag-and-drop ordering, archive/trash, accounts with per-user data, API docs, marketing site, mobile layout |
 
 ## Running it
 
