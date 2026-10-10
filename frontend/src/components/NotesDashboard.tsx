@@ -55,22 +55,20 @@ export function NotesDashboard() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <h1 className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight">
             <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-sm text-white shadow-sm">
               D
             </span>
             Draftify
+            {notesQuery.isSuccess && (
+              <span className="ml-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400" aria-live="polite">
+                {visible.length}
+                {search ? ` / ${notes.length}` : ''}
+              </span>
+            )}
           </h1>
-          <div className="flex flex-1 justify-center">
-            <SearchBar />
-          </div>
-          {notesQuery.isSuccess && (
-            <span className="hidden shrink-0 text-xs text-slate-400 sm:block" aria-live="polite">
-              {visible.length}
-              {search ? ` of ${notes.length}` : ''} {notes.length === 1 && !search ? 'note' : 'notes'}
-            </span>
-          )}
+          <SearchBar />
         </div>
       </header>
 

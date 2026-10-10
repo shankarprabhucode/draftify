@@ -6,6 +6,7 @@ import Highlight from '@tiptap/extension-highlight'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { BubbleToolbar } from './BubbleToolbar'
+import { EditorToolbar } from './EditorToolbar'
 import { SlashCommand } from './SlashCommand'
 
 interface RichTextEditorProps {
@@ -16,6 +17,8 @@ interface RichTextEditorProps {
   autofocus?: boolean
   /** Compact mode for the quick-capture box. */
   minHeight?: string
+  /** Show the persistent formatting toolbar above the content. */
+  toolbar?: boolean
   className?: string
 }
 
@@ -25,6 +28,7 @@ export function RichTextEditor({
   placeholder = "Take a note… type '/' for blocks",
   autofocus = false,
   minHeight = '8rem',
+  toolbar = false,
   className = '',
 }: RichTextEditorProps) {
   const editor = useEditor({
@@ -62,6 +66,11 @@ export function RichTextEditor({
 
   return (
     <div className={className}>
+      {toolbar && (
+        <div className="mb-3">
+          <EditorToolbar editor={editor} />
+        </div>
+      )}
       <BubbleToolbar editor={editor} />
       <EditorContent editor={editor} />
     </div>
