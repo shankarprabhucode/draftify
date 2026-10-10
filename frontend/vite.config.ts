@@ -6,6 +6,12 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      // Two pages: the marketing site at / and the app at /app.
+      input: { site: 'index.html', app: 'app/index.html' },
+    },
+  },
   server: {
     // Forward /api/* to the FastAPI server so the browser never deals with CORS.
     proxy: {

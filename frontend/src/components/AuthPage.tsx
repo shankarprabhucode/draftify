@@ -10,11 +10,20 @@ const MIN_PASSWORD = 8
 const field =
   'w-full rounded-md border border-[#dadce0] bg-white px-3 py-2.5 text-[15px] outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/25 dark:border-[#5f6368] dark:bg-[#303134] dark:focus:border-[#8ab4f8]'
 
+const DEMO = { email: 'demo@test.com', password: 'demo1234' }
+
+function readQuery() {
+  if (typeof window === 'undefined') return { mode: 'login' as Mode, demo: false }
+  const q = new URLSearchParams(window.location.search)
+  return { mode: q.get('mode') === 'signup' ? ('signup' as Mode) : ('login' as Mode), demo: q.get('demo') === '1' }
+}
+
 /** Sign-in / sign-up card shown while there is no session. */
 export function AuthPage() {
-  const [mode, setMode] = useState<Mode>('login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [initial] = useState(readQuery)
+  const [mode, setMode] = useState<Mode>(initial.mode)
+  const [email, setEmail] = useState(initial.demo ? DEMO.email : '')
+  const [password, setPassword] = useState(initial.demo ? DEMO.password : '')
   const [confirm, setConfirm] = useState('')
   const [touched, setTouched] = useState(false)
   const login = useLogin()
@@ -44,12 +53,12 @@ export function AuthPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f8f9fa] px-4 py-10 dark:bg-[#202124]">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
+        <a href="/" className="mb-6 flex items-center justify-center gap-2.5">
           <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#fbbc04] to-[#f28b82] text-lg font-bold text-[#202124]">
             D
           </span>
           <span className="text-2xl text-[#5f6368] dark:text-[#e8eaed]">Draftify</span>
-        </div>
+        </a>
 
         <form
           onSubmit={submit}
@@ -118,6 +127,14 @@ export function AuthPage() {
             {mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
 
+          {mode === 'login' && !initial.demo && (
+            <p className="mt-4 text-center text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+              Just looking?{' '}
+              <a href="/app?demo=1" className="font-medium text-[#1a73e8] hover:underline">
+                Use the demo account
+              </a>
+            </p>
+          )}
           <p className="mt-5 text-center text-sm text-[#5f6368] dark:text-[#9aa0a6]">
             {mode === 'login' ? (
               <>

@@ -5,13 +5,212 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#fbbc04" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Draftify is a Keep-style notes app with a Notion-style editor: colours, labels, pinning, drag-and-drop, archive and trash, dark mode, and an open API." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>Draftify</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <title>Draftify — notes that keep up with you</title>
+    <script type="module" src="/src/site.ts"></script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Nav -->
+    <header class="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-[#202124]/80">
+      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <a href="/" class="flex items-center gap-2.5">
+          <span aria-hidden="true" class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#fbbc04] to-[#f28b82] text-base font-bold text-[#202124]">D</span>
+          <span class="text-xl font-semibold tracking-tight">Draftify</span>
+        </a>
+        <nav class="hidden items-center gap-7 text-sm font-medium text-[#5f6368] md:flex dark:text-[#9aa0a6]">
+          <a href="#features" class="hover:text-[#202124] dark:hover:text-white">Features</a>
+          <a href="#api" class="hover:text-[#202124] dark:hover:text-white">API</a>
+          <a href="/api/docs" class="hover:text-[#202124] dark:hover:text-white">Docs</a>
+          <a href="https://github.com/shankarprabhucode/draftify" class="hover:text-[#202124] dark:hover:text-white">GitHub</a>
+        </nav>
+        <div class="hidden items-center gap-2 md:flex">
+          <a href="/app" data-cta="secondary" class="rounded-full px-4 py-2 text-sm font-medium text-[#202124] hover:bg-black/5 dark:text-[#e8eaed] dark:hover:bg-white/10">Log in</a>
+          <a href="/app?mode=signup" data-cta="primary" class="rounded-full bg-[#202124] px-4 py-2 text-sm font-medium text-white hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white">Get started</a>
+        </div>
+        <button id="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 md:hidden dark:hover:bg-white/10">
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+      <div id="nav-menu" class="hidden border-t border-black/5 px-4 pb-4 md:hidden dark:border-white/10">
+        <a href="#features" class="block py-2.5 text-sm font-medium">Features</a>
+        <a href="#api" class="block py-2.5 text-sm font-medium">API</a>
+        <a href="/api/docs" class="block py-2.5 text-sm font-medium">Docs</a>
+        <a href="https://github.com/shankarprabhucode/draftify" class="block py-2.5 text-sm font-medium">GitHub</a>
+        <div class="mt-3 flex gap-2">
+          <a href="/app" data-cta="secondary" class="flex-1 rounded-full border border-black/15 px-4 py-2 text-center text-sm font-medium dark:border-white/20">Log in</a>
+          <a href="/app?mode=signup" data-cta="primary" class="flex-1 rounded-full bg-[#202124] px-4 py-2 text-center text-sm font-medium text-white dark:bg-[#e8eaed] dark:text-[#202124]">Get started</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="relative overflow-hidden">
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(251,188,4,0.18),transparent_70%)] dark:bg-[radial-gradient(60%_60%_at_50%_0%,rgba(251,188,4,0.12),transparent_70%)]"></div>
+        <div class="mx-auto max-w-6xl px-4 pt-16 pb-10 text-center sm:px-6 sm:pt-24">
+          <p class="rise mb-4 inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-[#5f6368] dark:border-white/15 dark:text-[#9aa0a6]">
+            <span class="h-1.5 w-1.5 rounded-full bg-[#34a853]"></span> Open source · React + FastAPI · Postgres
+          </p>
+          <h1 class="rise mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-balance sm:text-6xl">
+            Notes that keep up with you.
+          </h1>
+          <p class="rise rise-2 mx-auto mt-5 max-w-2xl text-lg text-[#5f6368] text-pretty dark:text-[#9aa0a6]">
+            The speed of Google Keep with the writing power of Notion. Capture in a tap, format with a slash, organise with colours and labels, and find anything in a keystroke.
+          </p>
+          <div class="rise rise-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="/app?mode=signup" data-cta="primary" class="rounded-full bg-[#202124] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white">Get started, it's free</a>
+            <a href="/app?demo=1" class="rounded-full border border-black/15 px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10">Try the demo account</a>
+          </div>
+        </div>
+        <div class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+          <img src="/screenshots/wall.jpg" alt="The Draftify wall: colour-coded notes with checklists, headings and labels" width="2880" height="1800" class="shot rise rise-3" fetchpriority="high" />
+        </div>
+      </section>
+
+      <!-- Feature sections -->
+      <section id="features" class="mx-auto max-w-6xl scroll-mt-24 px-4 sm:px-6">
+        <div class="mx-auto max-w-2xl text-center">
+          <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">Everything a notes app should do, done properly.</h2>
+          <p class="mt-4 text-[#5f6368] dark:text-[#9aa0a6]">No clutter, no setup. Each feature is there because you'll use it every day.</p>
+        </div>
+
+        <div class="mt-16 space-y-24">
+          <!-- Editor -->
+          <div class="grid items-center gap-10 lg:grid-cols-2">
+            <div>
+              <span class="inline-block rounded-full bg-[#fff475] px-3 py-1 text-xs font-semibold text-[#202124]">Editor</span>
+              <h3 class="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Write the way you think.</h3>
+              <p class="mt-3 text-[#5f6368] dark:text-[#9aa0a6]">Type <kbd class="rounded border border-black/20 px-1.5 font-mono text-xs dark:border-white/30">/</kbd> for headings, checklists, quotes, code and dividers. Select text and a bubble offers bold, italic, highlight and links. Every edit autosaves, with an explicit Save when you want to be sure.</p>
+              <ul class="mt-5 space-y-2 text-sm text-[#3c4043] dark:text-[#e8eaed]">
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Slash commands and a floating formatting bubble</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Checklists that tick off right on the card</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Keyboard: ⌘S to save, Esc to close, ⌘K to search</li>
+              </ul>
+            </div>
+            <div class="space-y-4">
+              <img src="/screenshots/editor.jpg" alt="Note editor with a toolbar, headings, numbered list and checklist" width="2880" height="1800" loading="lazy" class="shot" />
+              <img src="/screenshots/slash-menu.jpg" alt="The slash command menu listing block types" width="2880" height="1800" loading="lazy" class="shot" />
+            </div>
+          </div>
+
+          <!-- Organise -->
+          <div class="grid items-center gap-10 lg:grid-cols-2">
+            <div class="order-2 space-y-4 lg:order-1">
+              <img src="/screenshots/labels.jpg" alt="Label picker open on a card" width="2880" height="1800" loading="lazy" class="shot" />
+              <img src="/screenshots/drag.jpg" alt="A note card being dragged to a new position" width="2880" height="1800" loading="lazy" class="shot" />
+            </div>
+            <div class="order-1 lg:order-2">
+              <span class="inline-block rounded-full bg-[#ccff90] px-3 py-1 text-xs font-semibold text-[#202124]">Organise</span>
+              <h3 class="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Colours, labels, pins and drag.</h3>
+              <p class="mt-3 text-[#5f6368] dark:text-[#9aa0a6]">Ten Keep colours, labels you create inline, pins that float to the top, and a wall you can rearrange by dragging with a mouse, a finger or the keyboard. The order is yours and it's saved.</p>
+              <ul class="mt-5 space-y-2 text-sm text-[#3c4043] dark:text-[#e8eaed]">
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Labels in the sidebar filter the wall with one click</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Drop a note into the pinned row to pin it</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Grid or list view, remembered per device</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Safety -->
+          <div class="grid items-center gap-10 lg:grid-cols-2">
+            <div>
+              <span class="inline-block rounded-full bg-[#cbf0f8] px-3 py-1 text-xs font-semibold text-[#202124]">Peace of mind</span>
+              <h3 class="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Nothing gets lost.</h3>
+              <p class="mt-3 text-[#5f6368] dark:text-[#9aa0a6]">Archive what's done, trash what's not, and undo either from a toast. The trash keeps notes for seven days. Search covers titles, text and label names as you type.</p>
+              <ul class="mt-5 space-y-2 text-sm text-[#3c4043] dark:text-[#e8eaed]">
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Undo on archive, trash and restore</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Trashed notes open read-only until restored</li>
+                <li class="flex gap-2"><span class="text-[#34a853]">✓</span> Private by default: your notes are only yours</li>
+              </ul>
+            </div>
+            <div class="space-y-4">
+              <img src="/screenshots/search.jpg" alt="Search narrowing the wall to matching notes" width="2880" height="1800" loading="lazy" class="shot" />
+              <img src="/screenshots/trash.jpg" alt="The trash shelf with restore and delete forever actions" width="2880" height="1800" loading="lazy" class="shot" />
+            </div>
+          </div>
+
+          <!-- Everywhere -->
+          <div>
+            <div class="mx-auto max-w-2xl text-center">
+              <span class="inline-block rounded-full bg-[#d7aefb] px-3 py-1 text-xs font-semibold text-[#202124]">Everywhere</span>
+              <h3 class="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Looks right on every screen.</h3>
+              <p class="mt-3 text-[#5f6368] dark:text-[#9aa0a6]">A two-column wall and a slide-in drawer on phones, a full sidebar on desktops, and a dark theme that follows your system.</p>
+            </div>
+            <div class="mt-10 grid gap-6 md:grid-cols-[1.6fr_1fr_1fr]">
+              <img src="/screenshots/dark.jpg" alt="Draftify in dark mode" width="2880" height="1800" loading="lazy" class="shot self-start" />
+              <img src="/screenshots/mobile-wall.jpg" alt="The wall on a phone, two columns" width="1170" height="2532" loading="lazy" class="shot" />
+              <img src="/screenshots/mobile-drawer.jpg" alt="The navigation drawer on a phone" width="1170" height="2532" loading="lazy" class="shot" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- API -->
+      <section id="api" class="mx-auto mt-28 max-w-6xl scroll-mt-24 px-4 sm:px-6">
+        <div class="grid items-center gap-10 rounded-3xl bg-[#202124] p-8 text-white sm:p-12 lg:grid-cols-2 dark:bg-[#303134]">
+          <div>
+            <span class="inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">API</span>
+            <h2 class="mt-4 text-3xl font-bold tracking-tight">Built on an open API.</h2>
+            <p class="mt-3 text-white/70">Everything the app does goes through a documented REST API with cookie sessions. Explore it live in Swagger, or read it in ReDoc.</p>
+            <div class="mt-6 flex flex-wrap gap-3">
+              <a href="/api/docs" class="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#202124] hover:bg-[#f1f3f4]">Open Swagger UI</a>
+              <a href="/api/redoc" class="rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold hover:bg-white/10">ReDoc</a>
+              <a href="/api/openapi.json" class="rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold hover:bg-white/10">OpenAPI JSON</a>
+            </div>
+          </div>
+          <pre class="overflow-x-auto rounded-xl bg-black/40 p-5 font-mono text-[13px] leading-relaxed text-white/90"><code># sign in (sets the session cookie)
+curl -c jar -X POST https://draftify-gamma.vercel.app/api/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"demo@test.com","password":"demo1234"}'
+
+# create a note
+curl -b jar -X POST https://draftify-gamma.vercel.app/api/notes \
+  -H 'content-type: application/json' \
+  -d '{"title":"Hello","content":"&lt;p&gt;from the API&lt;/p&gt;","color":"teal"}'
+
+# reorder in one call
+curl -b jar -X POST https://draftify-gamma.vercel.app/api/notes/reorder \
+  -H 'content-type: application/json' -d '{"ids":[12,7,3]}'</code></pre>
+        </div>
+      </section>
+
+      <!-- Under the hood -->
+      <section class="mx-auto mt-28 max-w-6xl px-4 sm:px-6">
+        <div class="mx-auto max-w-2xl text-center">
+          <h2 class="text-3xl font-bold tracking-tight">Under the hood</h2>
+          <p class="mt-3 text-[#5f6368] dark:text-[#9aa0a6]">Small, boring, well-tested choices.</p>
+        </div>
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-2xl border border-black/10 p-5 dark:border-white/10"><h3 class="font-semibold">Frontend</h3><p class="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">React 19, TanStack Query with optimistic updates, TipTap editor, dnd-kit, Tailwind v4. Vitest + Testing Library.</p></div>
+          <div class="rounded-2xl border border-black/10 p-5 dark:border-white/10"><h3 class="font-semibold">Backend</h3><p class="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">FastAPI + SQLModel, Argon2 passwords, JWT cookie sessions, per-user scoping in the store layer. 46 pytest cases over two stores.</p></div>
+          <div class="rounded-2xl border border-black/10 p-5 dark:border-white/10"><h3 class="font-semibold">Data</h3><p class="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">Postgres on Supabase with self-applying migrations, or an in-memory store for zero-setup local runs.</p></div>
+          <div class="rounded-2xl border border-black/10 p-5 dark:border-white/10"><h3 class="font-semibold">Hosting</h3><p class="mt-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">Vercel: static frontend plus a Python function pinned next to the database, one pooled connection per warm instance.</p></div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="mx-auto my-28 max-w-6xl px-4 text-center sm:px-6">
+        <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">Start writing.</h2>
+        <p class="mx-auto mt-3 max-w-xl text-[#5f6368] dark:text-[#9aa0a6]">Create an account in ten seconds, or poke around the demo first.</p>
+        <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a href="/app?mode=signup" data-cta="primary" class="rounded-full bg-[#202124] px-6 py-3 text-sm font-semibold text-white hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white">Get started</a>
+          <a href="/app" data-cta="secondary" class="rounded-full border border-black/15 px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10">Log in</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-black/5 py-8 text-center text-sm text-[#5f6368] dark:border-white/10 dark:text-[#9aa0a6]">
+      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6">
+        <span>© 2026 Draftify</span>
+        <div class="flex gap-5">
+          <a href="/api/docs" class="hover:text-[#202124] dark:hover:text-white">API docs</a>
+          <a href="https://github.com/shankarprabhucode/draftify" class="hover:text-[#202124] dark:hover:text-white">GitHub</a>
+          <a href="/app" class="hover:text-[#202124] dark:hover:text-white">Open app</a>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

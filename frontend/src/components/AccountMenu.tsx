@@ -30,6 +30,12 @@ export function AccountMenu({ user }: { user: User }) {
           <p className="truncate text-sm font-medium">{user.email}</p>
         </div>
         <div className="border-t border-black/10 p-2 dark:border-white/10">
+          <a href="/" className="block rounded-md px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10">
+            Home
+          </a>
+          <a href="/api/docs" className="block rounded-md px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10">
+            API docs
+          </a>
           <button
             type="button"
             onClick={() => logout.mutate()}

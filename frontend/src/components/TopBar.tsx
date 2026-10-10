@@ -33,7 +33,7 @@ export function TopBar({ user }: { user: User }) {
       >
         <MenuIcon />
       </IconButton>
-      <a href="/" className="mr-1 flex items-center gap-2 rounded-md px-1 py-1 sm:mr-6">
+      <a href="/app" className="mr-1 flex items-center gap-2 rounded-md px-1 py-1 sm:mr-6">
         <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#fbbc04] to-[#f28b82] text-sm font-bold text-[#202124] sm:h-9 sm:w-9 sm:text-base">
           D
         </span>

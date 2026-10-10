@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and create an account. The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in the browser. Set `VITE_API_URL` if you want to point at a different host.
+Open http://localhost:5173 for the marketing site, or http://localhost:5173/app for the app, and create an account. The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in the browser. Set `VITE_API_URL` if you want to point at a different host.
 
 **Tests:**
 
@@ -53,6 +53,8 @@ cd frontend && npm test
 Interactive API docs are at http://localhost:8000/docs.
 
 ## Decisions
+
+**Two pages, one build.** Vite builds two HTML entries: the marketing site at `/` (static HTML + Tailwind, with screenshots captured by a Playwright script) and the React app at `/app`. The site checks `/auth/me` and turns its calls to action into "Open Draftify" for signed-in visitors. The sign-in page accepts `?mode=signup` and `?demo=1` (pre-fills the demo account).
 
 **Accounts and sessions.** Email and password sign-up and sign-in live in the FastAPI backend rather than a third-party provider, so the zero-setup in-memory mode still works end to end. Passwords are hashed with Argon2. A session is a signed JWT (seven days) in an HTTP-only, SameSite=Lax cookie, marked Secure in production; the browser never reads it, and because the API is same-origin on both the dev proxy and Vercel there is no token to pass around. Every note and label has an owner and every store method takes the owner's id, so authorisation is enforced in one place rather than per route. Login attempts are rate-limited per client and email, and the wrong-email and wrong-password responses are identical. The first account to sign up adopts any notes and labels that predate accounts. The frontend shows the sign-in page until `/auth/me` succeeds and drops back to it on any 401.
 
