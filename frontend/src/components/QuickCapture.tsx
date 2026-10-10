@@ -29,6 +29,8 @@ export function QuickCapture() {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<NoteInput>(emptyNoteInput)
   const [menu, setMenu] = useState<'color' | 'label' | null>(null)
+  // "New list" starts with the caret in the first checklist item, not the title.
+  const [focusEditor, setFocusEditor] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
   const hasContent = draft.title.trim().length > 0 || !isBlank(draft.content)
@@ -48,6 +50,7 @@ export function QuickCapture() {
 
   const openWith = (content = '') => {
     setDraft({ ...emptyNoteInput, content })
+    setFocusEditor(content.length > 0)
     setOpen(true)
   }
 
@@ -98,7 +101,7 @@ export function QuickCapture() {
     >
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 sm:px-7">
         <input
-          autoFocus
+          autoFocus={!focusEditor}
           value={draft.title}
           onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
           placeholder="Title"
@@ -111,7 +114,7 @@ export function QuickCapture() {
           onChange={(content) => setDraft((d) => ({ ...d, content }))}
           placeholder="Take a note… type '/' for blocks"
           minHeight="12rem"
-          autofocus={draft.content.length > 0}
+          autofocus={focusEditor ? 'start' : false}
           toolbar
         />
         {selectedLabels.length > 0 && (

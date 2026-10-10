@@ -14,7 +14,8 @@ interface RichTextEditorProps {
   content: string
   onChange: (html: string) => void
   placeholder?: string
-  autofocus?: boolean
+  /** Focus on mount: true/'end' puts the caret after the content, 'start' before it. */
+  autofocus?: boolean | 'start' | 'end'
   /** Compact mode for the quick-capture box. */
   minHeight?: string
   /** Show the persistent formatting toolbar above the content. */
@@ -48,7 +49,7 @@ export function RichTextEditor({
     ],
     content,
     editable,
-    autofocus: autofocus && editable ? 'end' : false,
+    autofocus: !autofocus || !editable ? false : autofocus === true ? 'end' : autofocus,
     editorProps: {
       attributes: {
         class: 'rich-text outline-none',
