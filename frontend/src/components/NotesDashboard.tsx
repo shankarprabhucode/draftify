@@ -79,7 +79,7 @@ export function NotesDashboard() {
       <TopBar />
       <div className="flex">
         <Sidebar />
-        <main className={`min-w-0 flex-1 px-4 pt-6 pb-32 transition-[padding] sm:px-8 ${sidebarOpen ? '' : 'md:pl-10'}`}>
+        <main className={`min-w-0 flex-1 px-4 pt-6 pb-28 transition-[padding] sm:px-8 ${sidebarOpen ? '' : 'md:pl-10'}`}>
 
           {activeLabel && (
             <div className="mx-auto mb-4 flex max-w-6xl items-center gap-2 text-sm text-[#5f6368] dark:text-[#9aa0a6]">

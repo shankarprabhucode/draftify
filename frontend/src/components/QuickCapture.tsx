@@ -18,9 +18,9 @@ const CHECKLIST_SEED =
 
 /**
  * Note capture. Closed, it is a floating "Take a note" button (plus a checklist
- * shortcut) fixed to the bottom-right. Open, it is a panel docked to the bottom
- * of the screen with a title field and rich editor. Save, Escape or clicking
- * outside creates the note if there is anything to save.
+ * shortcut) fixed to the bottom-right. Open, it is a centred modal with a title
+ * field and rich editor. Save, Escape or clicking the backdrop creates the note
+ * if there is anything to save.
  */
 export function QuickCapture() {
   const create = useCreateNote()
@@ -50,17 +50,12 @@ export function QuickCapture() {
     setOpen(true)
   }
 
-  // Click outside closes (and saves) the capture box.
+  // Escape saves and closes, unless a popover is open (it handles Escape itself).
   useEffect(() => {
     if (!open) return
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Element
-      if (box.current?.contains(target)) return
-      if (target.closest?.('.slash-menu')) return
-      close()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !menu && close()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   })
 
   if (!open) {
@@ -88,13 +83,18 @@ export function QuickCapture() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-3 sm:px-6 sm:pb-6">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-6"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
     <div
       ref={box}
-      className={`pointer-events-auto w-full max-w-xl animate-slide-up rounded-lg border shadow-fab ${colorStyles[draft.color].surface}`}
-      onKeyDown={(e) => e.key === 'Escape' && !menu && close()}
+      role="dialog"
+      aria-modal="true"
+      aria-label="New note"
+      className={`flex max-h-[92vh] w-full max-w-2xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
     >
-      <div className="px-4 pt-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 sm:px-7">
         <input
           autoFocus
           value={draft.title}
@@ -102,15 +102,15 @@ export function QuickCapture() {
           placeholder="Title"
           maxLength={200}
           aria-label="Title"
-          className="mb-1 w-full bg-transparent text-base font-medium outline-none placeholder:text-[#5f6368]"
+          className="mb-2 w-full bg-transparent text-[22px] leading-tight font-medium outline-none placeholder:text-[#80868b]"
         />
         <RichTextEditor
           content={draft.content}
           onChange={(content) => setDraft((d) => ({ ...d, content }))}
-          placeholder="Take a note…"
-          minHeight="4rem"
+          placeholder="Take a note… type '/' for blocks"
+          minHeight="12rem"
           autofocus={draft.content.length > 0}
-          className="max-h-[45vh] overflow-y-auto"
+          toolbar
         />
         {selectedLabels.length > 0 && (
           <div className="mt-2">
@@ -121,13 +121,13 @@ export function QuickCapture() {
           </div>
         )}
       </div>
-      <div className="mt-1 flex items-center justify-between px-2 pb-1.5">
+      <div className="mt-2 flex items-center justify-between px-3 py-2 sm:px-5">
         <div className="flex items-center gap-0.5">
           <div className="relative">
             <IconButton label="Change colour" active={menu === 'color'} onClick={() => setMenu(menu === 'color' ? null : 'color')}>
               <PaletteIcon />
             </IconButton>
-            <Popover open={menu === 'color'} onClose={() => setMenu(null)} side="top">
+            <Popover open={menu === 'color'} onClose={() => setMenu(null)}>
               <ColorPicker
                 value={draft.color}
                 onChange={(color) => {
@@ -141,7 +141,7 @@ export function QuickCapture() {
             <IconButton label="Label note" active={menu === 'label'} onClick={() => setMenu(menu === 'label' ? null : 'label')}>
               <LabelIcon className="h-4 w-4" />
             </IconButton>
-            <Popover open={menu === 'label'} onClose={() => setMenu(null)} side="top">
+            <Popover open={menu === 'label'} onClose={() => setMenu(null)}>
               <LabelPicker selectedIds={draft.label_ids} onChange={(label_ids) => setDraft((d) => ({ ...d, label_ids }))} />
             </Popover>
           </div>
