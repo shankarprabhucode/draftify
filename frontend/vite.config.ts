@@ -6,6 +6,8 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Multi-page: no SPA fallback, so /app resolves to app/index.html in dev too.
+  appType: 'mpa',
   build: {
     rollupOptions: {
       // Two pages: the marketing site at / and the app at /app.
