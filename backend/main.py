@@ -6,7 +6,9 @@ notes, or leave it unset to use an in-memory store. Every request past
 ``/auth`` needs a session cookie; see ``auth.py``.
 """
 
+import logging
 import os
+import uuid
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -24,6 +26,7 @@ from models import Credentials, Label, LabelIn, Note, NoteIn, ReorderIn, User
 from store import DuplicateEmail, DuplicateLabel, NoteStore, UnknownLabel, create_store
 
 load_dotenv()
+log = logging.getLogger("draftify")
 
 
 def _ensure_store(app: FastAPI) -> NoteStore:
@@ -63,6 +66,18 @@ Store = Annotated[NoteStore, Depends(get_store)]
 def _not_found(note_id: int) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND, detail=f"Note {note_id} not found"
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    """Log the traceback with an id and return that id to the client, so a user-
+    reported failure can be matched to a server log line."""
+    error_id = uuid.uuid4().hex[:8]
+    log.exception("unhandled error %s on %s %s", error_id, request.method, request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": f"Something went wrong on the server (error {error_id})"},
     )
 
 
