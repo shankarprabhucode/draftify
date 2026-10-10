@@ -1,18 +1,32 @@
 """Notes API.
 
-A small FastAPI service backing the Notes Dashboard. Notes live in memory
-and are lost on restart, which is fine for this exercise. The service assigns
-ids server-side, returns proper 404s, and allows CORS from the Vite dev server.
+A small FastAPI service backing the Notes Dashboard. Storage is chosen at
+startup: set ``DATABASE_URL`` (for example a Supabase Postgres connection
+string) to persist notes, or leave it unset to use an in-memory store.
 """
 
-from itertools import count
-from threading import Lock
+import os
+from collections.abc import Iterator
+from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, status
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 
-app = FastAPI(title="Notes API", version="0.1.0")
+from models import Note, NoteIn
+from store import NoteStore, create_store
+
+load_dotenv()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.store = create_store(os.getenv("DATABASE_URL"))
+    yield
+
+
+app = FastAPI(title="Notes API", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,58 +36,11 @@ app.add_middleware(
 )
 
 
-class NoteIn(BaseModel):
-    """Payload accepted on create and update. The server owns the id."""
-
-    title: str = Field(min_length=1, max_length=200)
-    content: str = Field(default="", max_length=10_000)
+def get_store(request: Request) -> Iterator[NoteStore]:
+    yield request.app.state.store
 
 
-class Note(NoteIn):
-    id: int
-
-
-class NoteStore:
-    """Thread-safe in-memory store. Preserves insertion order."""
-
-    def __init__(self) -> None:
-        self._notes: dict[int, Note] = {}
-        self._ids = count(1)
-        self._lock = Lock()
-
-    def list(self) -> list[Note]:
-        with self._lock:
-            return list(self._notes.values())
-
-    def get(self, note_id: int) -> Note | None:
-        with self._lock:
-            return self._notes.get(note_id)
-
-    def create(self, data: NoteIn) -> Note:
-        with self._lock:
-            note = Note(id=next(self._ids), **data.model_dump())
-            self._notes[note.id] = note
-            return note
-
-    def update(self, note_id: int, data: NoteIn) -> Note | None:
-        with self._lock:
-            if note_id not in self._notes:
-                return None
-            note = Note(id=note_id, **data.model_dump())
-            self._notes[note_id] = note
-            return note
-
-    def delete(self, note_id: int) -> bool:
-        with self._lock:
-            return self._notes.pop(note_id, None) is not None
-
-    def clear(self) -> None:
-        with self._lock:
-            self._notes.clear()
-            self._ids = count(1)
-
-
-store = NoteStore()
+Store = Annotated[NoteStore, Depends(get_store)]
 
 
 def _not_found(note_id: int) -> HTTPException:
@@ -83,12 +50,12 @@ def _not_found(note_id: int) -> HTTPException:
 
 
 @app.get("/notes", response_model=list[Note])
-def list_notes() -> list[Note]:
+def list_notes(store: Store) -> list[Note]:
     return store.list()
 
 
 @app.get("/notes/{note_id}", response_model=Note)
-def get_note(note_id: int) -> Note:
+def get_note(note_id: int, store: Store) -> Note:
     note = store.get(note_id)
     if note is None:
         raise _not_found(note_id)
@@ -96,12 +63,12 @@ def get_note(note_id: int) -> Note:
 
 
 @app.post("/notes", response_model=Note, status_code=status.HTTP_201_CREATED)
-def create_note(data: NoteIn) -> Note:
+def create_note(data: NoteIn, store: Store) -> Note:
     return store.create(data)
 
 
 @app.put("/notes/{note_id}", response_model=Note)
-def update_note(note_id: int, data: NoteIn) -> Note:
+def update_note(note_id: int, data: NoteIn, store: Store) -> Note:
     note = store.update(note_id, data)
     if note is None:
         raise _not_found(note_id)
@@ -109,6 +76,6 @@ def update_note(note_id: int, data: NoteIn) -> Note:
 
 
 @app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_note(note_id: int) -> None:
+def delete_note(note_id: int, store: Store) -> None:
     if not store.delete(note_id):
         raise _not_found(note_id)

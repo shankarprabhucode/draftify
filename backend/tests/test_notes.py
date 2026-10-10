@@ -1,19 +1,24 @@
+"""API tests, run once against each store implementation."""
+
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app, store
+from main import app, get_store
+from store import InMemoryNoteStore, SqlNoteStore, make_engine
 
 
-@pytest.fixture(autouse=True)
-def reset_store():
+@pytest.fixture(params=["memory", "sqlite"])
+def client(request):
+    if request.param == "memory":
+        store = InMemoryNoteStore()
+    else:
+        store = SqlNoteStore(make_engine("sqlite://"))
+
+    app.dependency_overrides[get_store] = lambda: store
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()
     store.clear()
-    yield
-    store.clear()
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 def test_crud_round_trip(client):
@@ -29,10 +34,17 @@ def test_crud_round_trip(client):
     assert updated.json() == {"id": 1, "title": "Edited", "content": ""}
 
     assert client.get("/notes").json() == [updated.json()]
+    assert client.get(f"/notes/{note['id']}").json() == updated.json()
 
     deleted = client.delete(f"/notes/{note['id']}")
     assert deleted.status_code == 204
     assert client.get("/notes").json() == []
+
+
+def test_list_preserves_creation_order(client):
+    for title in ("a", "b", "c"):
+        client.post("/notes", json={"title": title})
+    assert [n["title"] for n in client.get("/notes").json()] == ["a", "b", "c"]
 
 
 def test_missing_note_returns_404(client):

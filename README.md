@@ -3,7 +3,7 @@
 A small notes app: a React frontend talking to a FastAPI backend. Create, edit, delete, and search notes. Every change goes through the API with optimistic updates, loading states, and error handling.
 
 ```
-backend/   FastAPI service (in-memory store)
+backend/   FastAPI service, Postgres (Supabase) via SQLModel, in-memory fallback
 frontend/  Vite + React 19 + TypeScript
 ```
 
@@ -19,7 +19,15 @@ uv sync
 uv run uvicorn main:app --reload
 ```
 
-Without uv: `pip install fastapi "uvicorn[standard]"` then `uvicorn main:app --reload`.
+Without uv: `pip install fastapi "uvicorn[standard]" sqlmodel "psycopg[binary]" python-dotenv` then `uvicorn main:app --reload`.
+
+With no configuration the backend uses an in-memory store, so it runs with zero setup. To persist notes, copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL`:
+
+- **Supabase**: Project Settings, Database, Connection string (URI). Use the direct connection on port 5432.
+- **Any Postgres**: a standard `postgresql://user:pass@host:5432/db` URL.
+- **SQLite**: `sqlite:///./notes.db` for a local file.
+
+The `notes` table is created automatically on startup.
 
 **Frontend** (port 5173):
 
@@ -48,7 +56,11 @@ Interactive API docs are at http://localhost:8000/docs.
 
 **Error handling.** A thin `request()` wrapper turns non-2xx responses and network failures into `ApiError` with a readable message. The dashboard shows a skeleton grid while loading, a retry banner if the initial fetch fails, and a dismissable banner if any mutation is rejected after rollback.
 
-**Backend changes from the starter.** The provided template had the client supply ids, returned 200 with an error body for a missing note, and had no CORS. This version assigns ids server-side, returns 404/422 properly, validates that titles are non-empty, uses 201/204 status codes, and guards the store with a lock. Storage is still in-memory and resets on restart.
+**Backend changes from the starter.** The provided template had the client supply ids, returned 200 with an error body for a missing note, and had no CORS. This version assigns ids server-side, returns 404/422 properly, validates that titles are non-empty, and uses 201/204 status codes.
+
+**Storage behind a small interface.** `store.py` defines a `NoteStore` protocol with two implementations: `InMemoryNoteStore` (a lock-guarded dict) and `SqlNoteStore` (SQLModel on top of SQLAlchemy). `create_store()` picks one from `DATABASE_URL` at startup and the route handlers receive it through FastAPI's dependency injection, so the API code never knows which backend it has. Supabase is just Postgres, so there is no Supabase-specific client; the same URL mechanism works for a local Postgres or SQLite, and a reviewer without Supabase credentials can still run everything. The API schema (`Note`) is deliberately separate from the table model (`NoteRow`) so the two can evolve independently.
+
+**Tests run against both stores.** The pytest `client` fixture is parametrised over the in-memory store and an in-memory SQLite `SqlNoteStore`, so the SQL path is covered on every run without a database server.
 
 **Tailwind v4** via the Vite plugin. No config file needed.
 
@@ -58,7 +70,8 @@ Interactive API docs are at http://localhost:8000/docs.
 
 - **Search**: filters by title or content, case-insensitive, with an empty state for no matches.
 - **Optimistic UI**: all three mutations, with rollback.
-- **Tests**: `NoteCard.test.tsx` covers rendering, callbacks, disabled state, and the empty-content placeholder. The backend has `pytest` coverage for the CRUD round trip, 404s, and validation.
+- **Tests**: `NoteCard.test.tsx` covers rendering, callbacks, disabled state, and the empty-content placeholder. The backend has `pytest` coverage for the CRUD round trip, ordering, 404s, and validation, run against both store implementations.
+- **Persistence**: Postgres via Supabase (or any Postgres/SQLite) through `DATABASE_URL`, with automatic table creation and an in-memory fallback.
 - **Keyboard and accessibility**: Escape closes the modal, dialog has `aria-modal` and a labelled title, loading and busy states are announced.
 
 ## Adapting to React Native
