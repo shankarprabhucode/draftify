@@ -89,7 +89,7 @@ export function QuickCapture() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-2 sm:items-center sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
     <div
@@ -97,9 +97,9 @@ export function QuickCapture() {
       role="dialog"
       aria-modal="true"
       aria-label="New note"
-      className={`flex max-h-[92vh] w-full max-w-2xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
+      className={`flex max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] w-full max-w-2xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 sm:px-7">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 sm:px-7">
         <input
           autoFocus={!focusEditor}
           value={draft.title}

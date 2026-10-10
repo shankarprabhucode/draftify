@@ -30,6 +30,7 @@ export function NotesUIProvider({ children }: { children: ReactNode }) {
   const [view, setViewState] = useState<ViewMode>(() => readPref('draftify.view', 'grid'))
   const [sidebarOpen, setSidebarOpen] = useState(() => readPref('draftify.sidebar', 'open') === 'open')
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const value = useMemo<NotesUIContextValue>(
     () => ({
@@ -42,11 +43,13 @@ export function NotesUIProvider({ children }: { children: ReactNode }) {
       setSection: (next) => {
         setSectionState(next)
         setActiveLabelIdState(null)
+        setDrawerOpen(false)
       },
       activeLabelId,
       setActiveLabelId: (id) => {
         setActiveLabelIdState(id)
         if (id !== null) setSectionState('notes')
+        setDrawerOpen(false)
       },
       view,
       setView: (v) => {
@@ -59,10 +62,12 @@ export function NotesUIProvider({ children }: { children: ReactNode }) {
           writePref('draftify.sidebar', open ? 'closed' : 'open')
           return !open
         }),
+      drawerOpen,
+      setDrawerOpen,
       labelsDialogOpen,
       setLabelsDialogOpen,
     }),
-    [search, openNoteId, section, activeLabelId, view, sidebarOpen, labelsDialogOpen],
+    [search, openNoteId, section, activeLabelId, view, sidebarOpen, drawerOpen, labelsDialogOpen],
   )
 
   return <NotesUIContext.Provider value={value}>{children}</NotesUIContext.Provider>

@@ -109,14 +109,14 @@ export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: No
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-2 sm:items-center sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={draft.title || 'Untitled note'}
-        className={`flex max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
+        className={`flex max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] w-full max-w-3xl animate-rise flex-col rounded-lg border shadow-2xl ${colorStyles[draft.color].surface}`}
       >
         {readOnly && (
           <p role="status" className="rounded-t-lg bg-black/6 px-6 py-2 text-center text-xs text-[#3c4043] sm:px-8 dark:bg-white/10 dark:text-[#e8eaed]">
@@ -124,7 +124,7 @@ export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: No
           </p>
         )}
         {/* Header: title + close */}
-        <div className="flex items-start gap-3 px-6 pt-5 pb-1 sm:px-8">
+        <div className="flex items-start gap-3 px-4 pt-4 pb-1 sm:px-8 sm:pt-5">
           <input
             value={draft.title}
             readOnly={readOnly}
@@ -140,7 +140,7 @@ export function NoteDialog({ note, onClose, onArchive, onDelete, onRestore }: No
         </div>
 
         {/* Body: toolbar + scrolling editor */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-4 sm:px-8">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4 sm:px-8">
           <RichTextEditor
             content={draft.content}
             onChange={(content) => change({ content })}

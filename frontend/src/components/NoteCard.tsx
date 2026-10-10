@@ -54,7 +54,7 @@ export const NoteCard = memo(function NoteCard({
           </h3>
         )}
         {html ? (
-          <div className="rich-text note-preview max-h-80 overflow-hidden" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="rich-text note-preview max-h-56 overflow-hidden sm:max-h-80" dangerouslySetInnerHTML={{ __html: html }} />
         ) : untitled ? (
           <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">Empty note</p>
         ) : null}
@@ -73,7 +73,7 @@ export const NoteCard = memo(function NoteCard({
             active={note.pinned}
             onClick={() => onPatch(note, { pinned: !note.pinned })}
             disabled={pendingCreate}
-            className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}
+            className={note.pinned ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'}
           >
             <PinIcon filled={note.pinned} />
           </IconButton>
@@ -83,7 +83,7 @@ export const NoteCard = memo(function NoteCard({
       {/* Keep-style hover toolbar */}
       <div
         className={`flex h-10 items-center gap-0.5 px-2 transition-opacity ${
-          open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+          open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100'
         }`}
       >
         {pendingCreate ? (

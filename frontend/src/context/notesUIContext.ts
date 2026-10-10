@@ -18,8 +18,12 @@ export interface NotesUIContextValue {
   setActiveLabelId: (id: number | null) => void
   view: ViewMode
   setView: (view: ViewMode) => void
+  /** Desktop: inline sidebar expanded or collapsed to icons. */
   sidebarOpen: boolean
   toggleSidebar: () => void
+  /** Phones: the sidebar as a slide-in drawer. */
+  drawerOpen: boolean
+  setDrawerOpen: (open: boolean) => void
   labelsDialogOpen: boolean
   setLabelsDialogOpen: (open: boolean) => void
 }
