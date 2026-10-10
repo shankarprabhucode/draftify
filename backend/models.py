@@ -31,8 +31,10 @@ def _aware(value: datetime) -> datetime:
 
 
 class Credentials(SQLModel):
-    email: EmailStr
-    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128)
+    email: EmailStr = Field(description="Case-insensitive; stored lower-cased.")
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128, description="At least 8 characters.")
+
+    model_config = {"json_schema_extra": {"example": {"email": "demo@test.com", "password": "demo1234"}}}
 
 
 class User(SQLModel):
@@ -42,7 +44,9 @@ class User(SQLModel):
 
 
 class LabelIn(SQLModel):
-    name: str = Field(min_length=1, max_length=MAX_LABEL_LENGTH)
+    name: str = Field(min_length=1, max_length=MAX_LABEL_LENGTH, description="Unique per user, case-insensitive.")
+
+    model_config = {"json_schema_extra": {"example": {"name": "Work"}}}
 
 
 class Label(LabelIn):
@@ -53,11 +57,24 @@ class NoteIn(SQLModel):
     """Payload accepted on create and update. The server owns id, order and timestamps."""
 
     title: str = Field(default="", max_length=200)
-    content: str = Field(default="", max_length=MAX_CONTENT_LENGTH)
-    color: NoteColor = "default"
-    pinned: bool = False
+    content: str = Field(default="", max_length=MAX_CONTENT_LENGTH, description="HTML produced by the editor.")
+    color: NoteColor = Field(default="default", description="One of Keep's card colours.")
+    pinned: bool = Field(default=False, description="Pinned notes sort first. Ignored while archived.")
     archived: bool = False
-    label_ids: list[int] = Field(default_factory=list)
+    label_ids: list[int] = Field(default_factory=list, description="Ids of the user's labels to attach.")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "title": "Weekly groceries",
+                "content": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\"><label><input type=\"checkbox\"><span></span></label><div><p>Milk</p></div></li></ul>",
+                "color": "red",
+                "pinned": True,
+                "archived": False,
+                "label_ids": [1],
+            }
+        }
+    }
 
 
 class Note(SQLModel):
@@ -82,7 +99,9 @@ class Note(SQLModel):
 class ReorderIn(SQLModel):
     """Full display order of notes, first item shown first."""
 
-    ids: list[int]
+    ids: list[int] = Field(description="Note ids in the order they should appear.")
+
+    model_config = {"json_schema_extra": {"example": {"ids": [12, 7, 3]}}}
 
 
 # ---------------------------------------------------------------- tables
