@@ -23,7 +23,7 @@ Without uv: `pip install fastapi "uvicorn[standard]" sqlmodel "psycopg[binary]" 
 
 With no configuration the backend uses an in-memory store, so it runs with zero setup. To persist notes, copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL`:
 
-- **Supabase**: Project Settings, Database, Connection string (URI). Use the direct connection on port 5432.
+- **Supabase**: Project Settings, Database, Connection string, pick **Session pooler** (port 5432). Avoid the direct `db.<ref>.supabase.co` host: it is IPv6-only and won't connect from an IPv4-only network.
 - **Any Postgres**: a standard `postgresql://user:pass@host:5432/db` URL.
 - **SQLite**: `sqlite:///./notes.db` for a local file.
 
