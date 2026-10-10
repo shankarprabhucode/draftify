@@ -11,6 +11,7 @@ import { LabelChips } from './LabelChips'
 import { LabelPicker } from './LabelPicker'
 import { Popover } from './Popover'
 import { SaveButton, Spinner } from './SaveButton'
+import { Tooltip } from './Tooltip'
 import { CheckSquareIcon, LabelIcon, PaletteIcon, PinIcon, PlusIcon } from './icons'
 
 const CHECKLIST_SEED =
@@ -61,15 +62,16 @@ export function QuickCapture() {
   if (!open) {
     return (
       <div className="fixed right-5 bottom-5 z-40 flex items-center gap-3 sm:right-8 sm:bottom-8">
+        <Tooltip label="New list" placement="top">
         <button
           type="button"
           onClick={() => openWith(CHECKLIST_SEED)}
           aria-label="New list"
-          title="New list"
           className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-[#5f6368] shadow-keep transition hover:bg-[#f1f3f4] dark:border-white/10 dark:bg-[#2d2e30] dark:text-[#e8eaed] dark:hover:bg-[#3c4043]"
         >
           <CheckSquareIcon />
         </button>
+        </Tooltip>
         <button
           type="button"
           onClick={() => openWith()}

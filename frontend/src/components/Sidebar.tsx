@@ -1,6 +1,7 @@
 import { useLabels } from '../hooks/useLabels'
 import { useNotesUI } from '../hooks/useNotesUI'
 import { ArchiveIcon, EditIcon, LabelIcon, NotesIcon, TrashIcon } from './icons'
+import { Tooltip } from './Tooltip'
 
 interface ItemProps {
   icon: React.ReactNode
@@ -11,13 +12,12 @@ interface ItemProps {
 }
 
 function Item({ icon, label, active, collapsed, onClick }: ItemProps) {
-  return (
-    <li>
+  const button = (
       <button
         type="button"
         onClick={onClick}
         aria-current={active ? 'page' : undefined}
-        title={collapsed ? label : undefined}
+        aria-label={collapsed ? label : undefined}
         className={`flex h-12 w-full items-center gap-5 rounded-r-full pl-6 text-left text-sm font-medium transition ${
           active
             ? 'bg-[#feefc3] text-[#202124] dark:bg-[#41331c] dark:text-[#e8eaed]'
@@ -27,8 +27,8 @@ function Item({ icon, label, active, collapsed, onClick }: ItemProps) {
         <span className="shrink-0 text-[#5f6368] dark:text-[#e8eaed]">{icon}</span>
         {!collapsed && <span className="truncate">{label}</span>}
       </button>
-    </li>
   )
+  return <li>{collapsed ? <Tooltip label={label} placement="right">{button}</Tooltip> : button}</li>
 }
 
 /** Keep-style navigation: Notes, then one entry per label, then Edit labels. */

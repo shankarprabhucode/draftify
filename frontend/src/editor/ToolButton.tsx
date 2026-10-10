@@ -1,3 +1,5 @@
+import { Tooltip } from '../components/Tooltip'
+
 interface ToolButtonProps {
   label: string
   active?: boolean
@@ -9,9 +11,9 @@ interface ToolButtonProps {
 /** Small toggle used by the bubble menu and the toolbar. Keeps editor focus on click. */
 export function ToolButton({ label, active, disabled, onClick, children }: ToolButtonProps) {
   return (
+    <Tooltip label={label}>
     <button
       type="button"
-      title={label}
       aria-label={label}
       aria-pressed={active}
       disabled={disabled}
@@ -25,6 +27,7 @@ export function ToolButton({ label, active, disabled, onClick, children }: ToolB
     >
       {children}
     </button>
+    </Tooltip>
   )
 }
 
