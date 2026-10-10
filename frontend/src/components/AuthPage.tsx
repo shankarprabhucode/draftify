@@ -10,20 +10,18 @@ const MIN_PASSWORD = 8
 const field =
   'w-full rounded-md border border-[#dadce0] bg-white px-3 py-2.5 text-[15px] outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/25 dark:border-[#5f6368] dark:bg-[#303134] dark:focus:border-[#8ab4f8]'
 
-const DEMO = { email: 'demo@test.com', password: 'demo1234' }
-
 function readQuery() {
-  if (typeof window === 'undefined') return { mode: 'login' as Mode, demo: false }
+  if (typeof window === 'undefined') return { mode: 'login' as Mode }
   const q = new URLSearchParams(window.location.search)
-  return { mode: q.get('mode') === 'signup' ? ('signup' as Mode) : ('login' as Mode), demo: q.get('demo') === '1' }
+  return { mode: q.get('mode') === 'signup' ? ('signup' as Mode) : ('login' as Mode) }
 }
 
 /** Sign-in / sign-up card shown while there is no session. */
 export function AuthPage() {
   const [initial] = useState(readQuery)
   const [mode, setMode] = useState<Mode>(initial.mode)
-  const [email, setEmail] = useState(initial.demo ? DEMO.email : '')
-  const [password, setPassword] = useState(initial.demo ? DEMO.password : '')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [touched, setTouched] = useState(false)
   const login = useLogin()
@@ -127,14 +125,6 @@ export function AuthPage() {
             {mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
 
-          {mode === 'login' && !initial.demo && (
-            <p className="mt-4 text-center text-xs text-[#5f6368] dark:text-[#9aa0a6]">
-              Just looking?{' '}
-              <a href="/app?demo=1" className="font-medium text-[#1a73e8] hover:underline">
-                Use the demo account
-              </a>
-            </p>
-          )}
           <p className="mt-5 text-center text-sm text-[#5f6368] dark:text-[#9aa0a6]">
             {mode === 'login' ? (
               <>

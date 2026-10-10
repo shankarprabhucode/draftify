@@ -62,7 +62,7 @@
           </p>
           <div class="rise rise-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a href="/app?mode=signup" data-cta="primary" class="rounded-full bg-[#202124] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white">Get started, it's free</a>
-            <a href="/app?demo=1" class="rounded-full border border-black/15 px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10">Try the demo account</a>
+            <a href="/app" data-cta="secondary" class="rounded-full border border-black/15 px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10">Log in</a>
           </div>
         </div>
         <div class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
@@ -164,7 +164,7 @@
           <pre class="overflow-x-auto rounded-xl bg-black/40 p-5 font-mono text-[13px] leading-relaxed text-white/90"><code># sign in (sets the session cookie)
 curl -c jar -X POST https://draftify-gamma.vercel.app/api/auth/login \
   -H 'content-type: application/json' \
-  -d '{"email":"demo@test.com","password":"demo1234"}'
+  -d '{"email":"you@example.com","password":"your-password"}'
 
 # create a note
 curl -b jar -X POST https://draftify-gamma.vercel.app/api/notes \
@@ -194,7 +194,7 @@ curl -b jar -X POST https://draftify-gamma.vercel.app/api/notes/reorder \
       <!-- CTA -->
       <section class="mx-auto my-28 max-w-6xl px-4 text-center sm:px-6">
         <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">Start writing.</h2>
-        <p class="mx-auto mt-3 max-w-xl text-[#5f6368] dark:text-[#9aa0a6]">Create an account in ten seconds, or poke around the demo first.</p>
+        <p class="mx-auto mt-3 max-w-xl text-[#5f6368] dark:text-[#9aa0a6]">Create an account in ten seconds and start capturing.</p>
         <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a href="/app?mode=signup" data-cta="primary" class="rounded-full bg-[#202124] px-6 py-3 text-sm font-semibold text-white hover:bg-black dark:bg-[#e8eaed] dark:text-[#202124] dark:hover:bg-white">Get started</a>
           <a href="/app" data-cta="secondary" class="rounded-full border border-black/15 px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10">Log in</a>

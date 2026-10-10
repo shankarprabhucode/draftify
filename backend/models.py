@@ -34,7 +34,7 @@ class Credentials(SQLModel):
     email: EmailStr = Field(description="Case-insensitive; stored lower-cased.")
     password: str = Field(min_length=MIN_PASSWORD_LENGTH, max_length=128, description="At least 8 characters.")
 
-    model_config = {"json_schema_extra": {"example": {"email": "demo@test.com", "password": "demo1234"}}}
+    model_config = {"json_schema_extra": {"example": {"email": "you@example.com", "password": "a-long-password"}}}
 
 
 class User(SQLModel):
