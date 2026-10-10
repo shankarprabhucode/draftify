@@ -28,3 +28,10 @@ body { @apply bg-white text-[#202124] antialiased dark:bg-[#202124] dark:text-[#
 .slider-dots { @apply mt-3 flex justify-center gap-2; }
 .dot { @apply h-2 w-2 rounded-full bg-black/20 transition dark:bg-white/25; }
 .dot[aria-current="true"] { @apply w-5 bg-[#202124] dark:bg-[#e8eaed]; }
+
+/* ---------- Phone frame ---------- */
+.phone {
+  @apply overflow-hidden rounded-[2rem] border-[6px] border-[#202124] bg-[#202124] shadow-[0_24px_50px_-20px_rgba(15,23,42,0.5)] dark:border-[#3c4043] dark:bg-[#3c4043];
+  aspect-ratio: 390 / 844;
+}
+.phone img { @apply block h-full w-full object-cover object-top; }
