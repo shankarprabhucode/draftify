@@ -60,9 +60,8 @@ body {
   @apply w-72 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-slate-600 dark:bg-slate-800;
 }
 
-/* Masonry grid: as many ~15rem columns as fit */
-.masonry { @apply columns-[15rem] gap-3; }
-.masonry > * { @apply mb-3 break-inside-avoid; }
+/* Note grid: as many ~15rem columns as fit; rows align to the top so cards keep their height */
+.notes-grid { @apply grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-start gap-3; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .animate-rise { animation: rise 160ms ease-out; }

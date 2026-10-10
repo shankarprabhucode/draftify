@@ -10,6 +10,7 @@ const note: Note = {
   content: '<p>Eggs, <strong>milk</strong></p>',
   color: 'yellow',
   pinned: false,
+  position: 0,
   updated_at: new Date().toISOString(),
 }
 

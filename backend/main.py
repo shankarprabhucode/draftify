@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import Note, NoteIn
+from models import Note, NoteIn, ReorderIn
 from store import NoteStore, create_store
 
 load_dotenv()
@@ -61,6 +61,15 @@ def _not_found(note_id: int) -> HTTPException:
 @app.get("/notes", response_model=list[Note])
 def list_notes(store: Store) -> list[Note]:
     return store.list()
+
+
+@app.post("/notes/reorder", response_model=list[Note])
+def reorder_notes(data: ReorderIn, store: Store) -> list[Note]:
+    """Persist a drag-and-drop order. Returns every note in display order."""
+    notes = store.reorder(data.ids)
+    if notes is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="One or more notes not found")
+    return notes
 
 
 @app.get("/notes/{note_id}", response_model=Note)

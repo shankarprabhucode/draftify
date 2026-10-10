@@ -56,10 +56,41 @@ def test_defaults_allow_untitled_notes(client):
     assert created.json()["title"] == ""
 
 
-def test_list_preserves_creation_order(client):
+def titles(client):
+    return [n["title"] for n in client.get("/notes").json()]
+
+
+def test_new_notes_appear_first(client):
     for title in ("a", "b", "c"):
         client.post("/notes", json={"title": title})
-    assert [n["title"] for n in client.get("/notes").json()] == ["a", "b", "c"]
+    assert titles(client) == ["c", "b", "a"]
+
+
+def test_pinned_notes_come_first_and_pinning_moves_to_top_of_group(client):
+    ids = {t: client.post("/notes", json={"title": t}).json()["id"] for t in ("a", "b", "c")}
+    assert titles(client) == ["c", "b", "a"]
+    client.put(f"/notes/{ids['a']}", json={"title": "a", "pinned": True})
+    assert titles(client) == ["a", "c", "b"]
+    client.put(f"/notes/{ids['b']}", json={"title": "b", "pinned": True})
+    assert titles(client) == ["b", "a", "c"]
+    # Unpinning drops the note to the top of the unpinned group.
+    client.put(f"/notes/{ids['a']}", json={"title": "a", "pinned": False})
+    assert titles(client) == ["b", "a", "c"]
+    # Editing content does not move a note.
+    client.put(f"/notes/{ids['c']}", json={"title": "c!", "pinned": False})
+    assert titles(client) == ["b", "a", "c!"]
+
+
+def test_reorder(client):
+    ids = {t: client.post("/notes", json={"title": t}).json()["id"] for t in ("a", "b", "c")}
+    res = client.post("/notes/reorder", json={"ids": [ids["a"], ids["c"], ids["b"]]})
+    assert res.status_code == 200
+    assert [n["title"] for n in res.json()] == ["a", "c", "b"]
+    assert titles(client) == ["a", "c", "b"]
+    # A note created afterwards still lands first.
+    client.post("/notes", json={"title": "d"})
+    assert titles(client) == ["d", "a", "c", "b"]
+    assert client.post("/notes/reorder", json={"ids": [999]}).status_code == 404
 
 
 def test_missing_note_returns_404(client):
@@ -84,10 +115,10 @@ def test_migration_adds_columns_to_old_table():
         conn.execute(text("CREATE TABLE notes (id INTEGER PRIMARY KEY, title VARCHAR, content VARCHAR)"))
         conn.execute(text("INSERT INTO notes (title, content) VALUES ('old', 'row')"))
 
-    assert migrate(engine) == ["color", "pinned", "updated_at"]
+    assert migrate(engine) == ["color", "pinned", "updated_at", "position"]
     assert migrate(engine) == []  # idempotent
 
     store = SqlNoteStore(engine)
     [note] = store.list()
-    assert (note.title, note.color, note.pinned) == ("old", "default", False)
+    assert (note.title, note.color, note.pinned, note.position) == ("old", "default", False, -1)
     assert note.updated_at is not None

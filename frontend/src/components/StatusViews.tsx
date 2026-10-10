@@ -30,7 +30,7 @@ export function ErrorBanner({ message, onRetry, onDismiss }: ErrorBannerProps) {
 export function LoadingGrid() {
   const heights = ['h-32', 'h-48', 'h-40', 'h-56', 'h-36', 'h-44', 'h-40', 'h-32']
   return (
-    <div role="status" aria-label="Loading notes" className="masonry">
+    <div role="status" aria-label="Loading notes" className="notes-grid">
       {heights.map((h, i) => (
         <div key={i} className={`${h} animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800`} />
       ))}

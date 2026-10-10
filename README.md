@@ -54,6 +54,8 @@ Interactive API docs are at http://localhost:8000/docs.
 
 **Keep-style interaction.** The "Take a note" bar expands into an editor and saves when it loses focus or is closed, so there is no form to submit. Opening a card shows the full editor in a dialog that autosaves after a short pause (and immediately for colour and pin changes), with a status line instead of a Save button. Delete hides the note and offers Undo in a toast for six seconds before the request is sent. Pinned notes sit in their own section; everything else is ordered by last edit.
 
+**Drag-and-drop ordering.** Cards can be dragged into any order with the mouse, by touch (press and hold), or from the keyboard (focus a card, Space to pick up, arrows to move, Space to drop), using [dnd-kit](https://dndkit.com). Each note has a `position`; the grid sorts pinned notes first and then by position, so editing a note no longer moves it. A drop sends one `POST /notes/reorder` with the full id order, applied optimistically with rollback. Dropping a note into the pinned group pins it, and pinning from the card or dialog puts the note at the top of its new group. Dragging is disabled while a search filter is active, because reordering a partial list would scramble the hidden notes. The layout is a CSS grid with top-aligned rows rather than a true masonry, since column-flow masonry and drag transforms do not mix.
+
 **TanStack Query for server state, Context for UI state.** Notes are server data, so they live in the query cache with automatic refetching and invalidation. The search string and "which editor is open" are purely client concerns, so they live in a small Context (`NotesUIProvider`). Keeping these separate avoids the common trap of mirroring server data into a global store and then fighting to keep it in sync.
 
 **Optimistic mutations.** Each create/update/delete hook in `useNotes.ts` snapshots the cache, patches it immediately, rolls back on error, and invalidates on settle. New notes get a negative temporary id so they can't collide with server ids, and the card renders them dimmed until the server confirms.
@@ -75,7 +77,8 @@ Interactive API docs are at http://localhost:8000/docs.
 ## Stretch features
 
 - **Rich-text editor** with bubble toolbar, slash commands, checklists, code blocks, links and highlights.
-- **Colours, pinning, autosave, undo-delete, dark mode, keyboard shortcuts** (⌘K search, Esc to close, `/` for blocks).
+- **Drag-and-drop reordering** with mouse, touch and keyboard, persisted per note.
+- **Colours, pinning, autosave, undo-delete, dark mode, keyboard shortcuts** (⌘K search, ⌘S save, Esc to close, `/` for blocks).
 - **Search**: filters by title or the plain text of the content, case-insensitive, with an empty state for no matches.
 - **Optimistic UI**: create, update, pin and delete, with rollback.
 - **Tests**: `NoteCard.test.tsx` covers rendering, callbacks, disabled state, and the empty-content placeholder. The backend has `pytest` coverage for the CRUD round trip, ordering, 404s, and validation, run against both store implementations.

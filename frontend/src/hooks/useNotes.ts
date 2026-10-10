@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { notesApi, type Note, type NoteInput } from '../api/notes'
+import { notesApi, toInput, type Note, type NoteInput } from '../api/notes'
+import { topPosition } from '../lib/order'
 
 export const notesKey = ['notes'] as const
 
@@ -35,7 +36,7 @@ export function useCreateNote() {
       // Negative temporary id so it can't collide with server ids.
       patch((notes) => [
         ...notes,
-        { id: -Date.now(), updated_at: new Date().toISOString(), ...input },
+        { id: -Date.now(), position: topPosition(notes), updated_at: new Date().toISOString(), ...input },
       ])
       return { previous }
     },
@@ -51,9 +52,12 @@ export function useUpdateNote() {
     onMutate: async ({ id, input }) => {
       const previous = await snapshot()
       patch((notes) =>
-        notes.map((n) =>
-          n.id === id ? { ...n, ...input, updated_at: new Date().toISOString() } : n,
-        ),
+        notes.map((n) => {
+          if (n.id !== id) return n
+          // Pinning or unpinning moves the note to the top of its new group.
+          const position = input.pinned !== n.pinned ? topPosition(notes) : n.position
+          return { ...n, ...input, position, updated_at: new Date().toISOString() }
+        }),
       )
       return { previous }
     },
@@ -72,6 +76,42 @@ export function useDeleteNote() {
       return { previous }
     },
     onError: (_err, _id, ctx) => ctx && rollback(ctx.previous),
+    onSettled: settle,
+  })
+}
+
+export interface MoveNoteVars {
+  /** Every note id in the new display order. */
+  ids: number[]
+  /** Set when the drop also changes the note's pinned state. */
+  pin?: { note: Note; pinned: boolean }
+}
+
+/**
+ * Drag-and-drop move. If the drop crosses the pinned boundary the pin change is
+ * sent first, then the full order, so the server never reorders a stale note.
+ */
+export function useMoveNote() {
+  const { snapshot, rollback, settle, patch } = useOptimisticNotes()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ ids, pin }: MoveNoteVars) => {
+      if (pin) await notesApi.update(pin.note.id, { ...toInput(pin.note), pinned: pin.pinned })
+      return notesApi.reorder(ids)
+    },
+    onMutate: async ({ ids, pin }) => {
+      const previous = await snapshot()
+      patch((notes) =>
+        notes.map((n) => ({
+          ...n,
+          pinned: pin && n.id === pin.note.id ? pin.pinned : n.pinned,
+          position: ids.includes(n.id) ? ids.indexOf(n.id) : n.position,
+        })),
+      )
+      return { previous }
+    },
+    onSuccess: (notes) => queryClient.setQueryData(notesKey, notes),
+    onError: (_err, _vars, ctx) => ctx && rollback(ctx.previous),
     onSettled: settle,
   })
 }

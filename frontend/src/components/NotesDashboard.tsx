@@ -2,9 +2,10 @@ import { useCallback, useMemo } from 'react'
 import type { Note } from '../api/notes'
 import { toInput } from '../api/notes'
 import { useDeleteWithUndo } from '../hooks/useDeleteWithUndo'
-import { useNotes, useUpdateNote } from '../hooks/useNotes'
+import { useMoveNote, useNotes, useUpdateNote } from '../hooks/useNotes'
 import { useNotesUI } from '../hooks/useNotesUI'
 import { toPlainText } from '../lib/html'
+import { sortNotes } from '../lib/order'
 import { NoteDialog } from './NoteDialog'
 import { NotesGrid } from './NotesGrid'
 import { QuickCapture } from './QuickCapture'
@@ -18,6 +19,7 @@ export function NotesDashboard() {
   const { search, openNoteId, openNote, closeNote } = useNotesUI()
   const notesQuery = useNotes()
   const update = useUpdateNote()
+  const move = useMoveNote()
   const { deleteNote, pendingIds, error: deleteError, reset: resetDelete } = useDeleteWithUndo()
 
   const notes = notesQuery.data ?? NO_NOTES
@@ -32,14 +34,8 @@ export function NotesDashboard() {
     )
   }, [notes, search, pendingIds])
 
-  // Pinned first, then most recently edited.
-  const sorted = useMemo(
-    () =>
-      [...visible].sort(
-        (a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at.localeCompare(a.updated_at),
-      ),
-    [visible],
-  )
+  const sorted = useMemo(() => sortNotes(visible), [visible])
+  const searching = search.trim().length > 0
 
   const openedNote = openNoteId === null ? null : (notes.find((n) => n.id === openNoteId) ?? null)
 
@@ -50,7 +46,13 @@ export function NotesDashboard() {
   )
   const handleDelete = useCallback((note: Note) => deleteNote(note), [deleteNote])
 
-  const mutationError = update.isError ? update : deleteError ? { error: deleteError, reset: resetDelete } : null
+  const mutationError = update.isError
+    ? update
+    : move.isError
+      ? move
+      : deleteError
+        ? { error: deleteError, reset: resetDelete }
+        : null
 
   return (
     <div className="min-h-screen">
@@ -97,6 +99,8 @@ export function NotesDashboard() {
       ) : (
         <NotesGrid
           notes={sorted}
+          dragDisabled={searching}
+          onMove={(m) => move.mutate(m)}
           onOpen={handleOpen}
           onTogglePin={handleTogglePin}
           onDelete={handleDelete}

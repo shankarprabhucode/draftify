@@ -30,7 +30,14 @@ class Note(NoteIn):
     """What the API returns."""
 
     id: int
+    position: int
     updated_at: datetime
+
+
+class ReorderIn(SQLModel):
+    """Full display order of notes, first item shown first."""
+
+    ids: list[int]
 
 
 class NoteRow(SQLModel, table=True):
@@ -43,6 +50,7 @@ class NoteRow(SQLModel, table=True):
     content: str = ""
     color: str = "default"
     pinned: bool = False
+    position: int = Field(default=0, index=True)
     updated_at: datetime = Field(default_factory=utcnow)
 
     def to_note(self) -> Note:
@@ -56,5 +64,6 @@ class NoteRow(SQLModel, table=True):
             content=self.content,
             color=self.color,  # type: ignore[arg-type]
             pinned=self.pinned,
+            position=self.position,
             updated_at=updated,
         )

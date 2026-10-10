@@ -11,6 +11,8 @@ export interface Note {
   content: string // sanitised HTML from the editor
   color: NoteColor
   pinned: boolean
+  /** Manual order within the pinned/unpinned group; lower comes first. */
+  position: number
   updated_at: string // ISO 8601
 }
 
@@ -32,4 +34,7 @@ export const notesApi = {
   update: (id: number, input: NoteInput) =>
     request<Note>(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   remove: (id: number) => request<void>(`/notes/${id}`, { method: 'DELETE' }),
+  /** Persist a full display order. Returns every note in the new order. */
+  reorder: (ids: number[]) =>
+    request<Note[]>('/notes/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
 }

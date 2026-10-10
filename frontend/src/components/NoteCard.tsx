@@ -21,7 +21,7 @@ export const NoteCard = memo(function NoteCard({ note, onOpen, onTogglePin, onDe
   return (
     <article
       aria-busy={pendingCreate}
-      className={`group relative animate-rise rounded-2xl border shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${colorStyles[note.color].surface} ${
+      className={`group relative animate-rise rounded-2xl border shadow-card transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${colorStyles[note.color].surface} ${
         pendingCreate ? 'opacity-60' : ''
       }`}
     >
