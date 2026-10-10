@@ -1,0 +1,6 @@
+# Used by Vercel's Python runtime for the api/ serverless function.
+# Local development uses backend/pyproject.toml via uv.
+fastapi>=0.115
+sqlmodel>=0.0.22
+psycopg[binary]>=3.2
+python-dotenv>=1.0

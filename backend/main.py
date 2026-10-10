@@ -20,9 +20,18 @@ from store import NoteStore, create_store
 load_dotenv()
 
 
+def _ensure_store(app: FastAPI) -> NoteStore:
+    """Create the store on first use. Lifespan normally does this at startup, but
+    some serverless hosts skip lifespan events, so the dependency can do it too."""
+    store = getattr(app.state, "store", None)
+    if store is None:
+        store = app.state.store = create_store(os.getenv("DATABASE_URL"))
+    return store
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.store = create_store(os.getenv("DATABASE_URL"))
+    _ensure_store(app)
     yield
 
 
@@ -37,7 +46,7 @@ app.add_middleware(
 
 
 def get_store(request: Request) -> Iterator[NoteStore]:
-    yield request.app.state.store
+    yield _ensure_store(request.app)
 
 
 Store = Annotated[NoteStore, Depends(get_store)]

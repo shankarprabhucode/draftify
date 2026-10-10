@@ -74,6 +74,27 @@ Interactive API docs are at http://localhost:8000/docs.
 - **Persistence**: Postgres via Supabase (or any Postgres/SQLite) through `DATABASE_URL`, with automatic table creation and an in-memory fallback.
 - **Keyboard and accessibility**: Escape closes the modal, dialog has `aria-modal` and a labelled title, loading and busy states are announced.
 
+## Deploying to Vercel
+
+One Vercel project serves both halves from the same domain, so the frontend keeps calling `/api` and no CORS configuration is needed.
+
+- `api/index.py` mounts the FastAPI app under `/api`; Vercel runs it as a Python serverless function.
+- `vercel.json` rewrites `/api/*` to that function.
+- `requirements.txt` at the repo root is what Vercel installs for the function.
+- When `VERCEL` is set, the engine uses `NullPool` (one connection per request) and disables server-side prepared statements so it works through a transaction-mode pooler.
+
+Import the repo in Vercel and use these settings:
+
+| Setting | Value |
+| --- | --- |
+| Framework Preset | Other |
+| Root Directory | `./` |
+| Build Command | `cd frontend && npm ci && npm run build` |
+| Output Directory | `frontend/dist` |
+| Environment Variable | `DATABASE_URL` = Supabase **Transaction pooler** string (port 6543) |
+
+Use the transaction pooler rather than the session pooler for serverless: functions open many short-lived connections, and session mode would exhaust the pool. Without `DATABASE_URL` the function falls back to the in-memory store, which resets on every cold start, so set it before relying on the deployment.
+
 ## Adapting to React Native
 
 The split between data and presentation is the part that carries over. `api/`, `hooks/useNotes.ts`, and the Context would move unchanged into a shared package; TanStack Query works on React Native out of the box, and `fetch` is available. The pieces that change:

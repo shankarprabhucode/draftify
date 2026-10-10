@@ -7,12 +7,13 @@ Two implementations share one interface:
   ``DATABASE_URL`` is set (for example a Supabase Postgres connection string).
 """
 
+import os
 from itertools import count
 from threading import Lock
 from typing import Protocol
 
 from sqlalchemy import Engine
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from models import Note, NoteIn, NoteRow
@@ -135,7 +136,15 @@ def make_engine(url: str) -> Engine:
         return create_engine(
             url, connect_args={"check_same_thread": False}, poolclass=StaticPool
         )
-    return create_engine(url, pool_pre_ping=True)
+
+    # Transaction-mode poolers (Supabase port 6543, PgBouncer) reject server-side
+    # prepared statements, so turn them off. Costs little with a session pooler.
+    connect_args = {"prepare_threshold": None}
+
+    if os.getenv("VERCEL"):
+        # Serverless: open a connection per request and let the pooler do the pooling.
+        return create_engine(url, connect_args=connect_args, poolclass=NullPool)
+    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
 
 def create_store(database_url: str | None) -> NoteStore:
