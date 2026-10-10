@@ -33,6 +33,9 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      // The backend is served at the root locally (under /api on Vercel), so its
+      // docs pages ask for /openapi.json; forward that too so /api/docs works in dev.
+      '/openapi.json': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   test: {
